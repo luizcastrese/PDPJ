@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Avaliação do pdpj-mcp-server.
+
+  Todas as perguntas são respondíveis apenas com as ferramentas deste servidor e
+  todas as operações envolvidas são de leitura.
+
+  Execute com PDPJ_DEMO=1: nesse modo as consultas de processo respondem com a
+  fixture local (src/services/demo.ts), o que torna as respostas determinísticas
+  e independentes de rede e da carga do CNJ. As perguntas de referência
+  (validação de número e catálogo de tribunais) são offline por natureza e valem
+  nos dois modos.
+
+  As respostas abaixo foram conferidas executando as próprias ferramentas.
+-->
+<evaluation>
+  <qa_pair>
+    <question>Recebi o número de processo 0010123-81.2019.5.02.0011 sem saber de onde ele veio. Descobrindo o segmento do judiciário e o código do tribunal embutidos nesse número, qual é a sigla do tribunal competente?</question>
+    <answer>TRT2</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Um cliente enviou o número 1000123-45.2023.8.26.0100, mas a consulta falha porque o dígito verificador não confere. Mantendo o sequencial, o ano, o segmento, o tribunal e a unidade de origem, qual é o dígito verificador de dois algarismos que tornaria esse número consistente?</question>
+    <answer>69</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Considerando todos os tribunais cujo índice está mapeado neste servidor, quantos deles pertencem ao segmento da Justiça do Trabalho (incluindo o tribunal superior desse segmento)?</question>
+    <answer>25</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Para montar uma consulta ao Tribunal de Justiça do Distrito Federal e Territórios, qual é exatamente o alias de endpoint que este servidor usa para esse tribunal?</question>
+    <answer>tjdft</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Existe confusão frequente entre os códigos do Tribunal de Justiça de Sergipe e do Tribunal de Justiça de São Paulo no número único CNJ. Qual é o código CNJ completo, no formato segmento.código, do Tribunal de Justiça de Sergipe?</question>
+    <answer>8.25</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Analisando o processo 1000123-69.2023.8.26.0100, quantos movimentos existem no histórico completo dele?</question>
+    <answer>26</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>No processo 1000123-69.2023.8.26.0100, qual é a classe processual registrada?</question>
+    <answer>Procedimento Comum Cível</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>No processo 1000123-69.2023.8.26.0100, quantos movimentos foram classificados como recursais (interposição e julgamento de recursos)?</question>
+    <answer>3</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>O histórico do processo 1000123-69.2023.8.26.0100 contém o movimento "Início da fase de cumprimento de sentença". Apesar de esse texto conter a palavra sentença, em qual categoria de movimento este servidor o classifica?</question>
+    <answer>execucao</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Entre todos os movimentos do processo 1000123-69.2023.8.26.0100, qual deles é apontado como o marco de sentença ou julgamento? Responda com o nome exato do movimento.</question>
+    <answer>Julgado procedente em parte o pedido - Sentença</answer>
+  </qa_pair>
+</evaluation>

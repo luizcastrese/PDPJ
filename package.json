@@ -1,0 +1,42 @@
+{
+  "name": "pdpj-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server para a API Pública do DataJud/PDPJ (CNJ): consulta e análise de processos judiciais",
+  "main": "dist/src/index.js",
+  "bin": {
+    "pdpj-mcp-server": "dist/src/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "start": "node dist/src/index.js",
+    "inspector": "npx -y @modelcontextprotocol/inspector node dist/src/index.js",
+    "test": "npm run build && node --test \"dist/test/*.test.js\""
+  },
+  "keywords": [
+    "mcp",
+    "pdpj",
+    "datajud",
+    "cnj",
+    "processo",
+    "juridico"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  }
+}
