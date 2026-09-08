@@ -123,20 +123,18 @@ claude mcp add pdpj -- node "$(pwd)/dist/src/index.js"
 O repositório também traz um `.mcp.json`: ao abrir este diretório no Claude Code,
 o servidor é oferecido automaticamente (basta aprovar).
 
-### Registrar no Claude Desktop
+### Registrar no app Claude para computador
 
-Em `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "pdpj": {
-      "command": "node",
-      "args": ["/caminho/absoluto/para/PDPJ/dist/src/index.js"]
-    }
-  }
-}
+```bash
+npm run instalar:desktop
 ```
+
+Escreve a entrada no `claude_desktop_config.json` do seu sistema, preservando
+outros servidores já configurados e guardando uma cópia de segurança antes.
+Depois, feche e abra o app.
+
+Sem rede, sem túnel e sem token: o app inicia o servidor como um processo
+local, do mesmo jeito que o Claude Code faz.
 
 ### Conferir com o Inspector
 

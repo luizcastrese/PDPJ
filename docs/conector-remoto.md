@@ -12,6 +12,13 @@ O servidor tem dois modos. O que você escolhe depende de onde quer usá-lo:
 Este documento cobre o segundo caso: publicar o servidor e ligá-lo ao Claude
 como qualquer outro conector.
 
+**Antes de seguir, confirme que você precisa disto.** Todo o aparato deste
+documento — túnel ou hospedagem, endereço público, token — existe por um único
+motivo: um conector do claude.ai é chamado pelos servidores da Anthropic, que
+precisam alcançar o seu servidor pela internet. Se você usa o Claude no próprio
+computador, nada disso é necessário: `npm run instalar:desktop` (app Claude) ou
+`claude mcp add` (Claude Code) resolvem com um processo local, sem rede.
+
 ---
 
 ## 1. Escolha um token de acesso
