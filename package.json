@@ -18,7 +18,9 @@
     "build": "tsc",
     "prepare": "npm run build",
     "watch": "tsc --watch",
+    "prestart": "npm run build",
     "start": "node dist/src/index.js",
+    "prestart:http": "npm run build",
     "start:http": "node dist/src/http.js",
     "inspector": "npx -y @modelcontextprotocol/inspector node dist/src/index.js",
     "test": "npm run build && node --test \"dist/test/*.test.js\""

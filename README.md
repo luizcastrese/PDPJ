@@ -96,6 +96,9 @@ npm install
 npm run build
 ```
 
+Depois de um `git pull`, não é preciso lembrar de recompilar: `npm start` e
+`npm run start:http` rodam o build antes de subir.
+
 ### Dois modos
 
 | | `npm start` (stdio) | `npm run start:http` |
