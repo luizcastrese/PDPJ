@@ -96,6 +96,19 @@ npm install
 npm run build
 ```
 
+### Dois modos
+
+| | `npm start` (stdio) | `npm run start:http` |
+| --- | --- | --- |
+| Como roda | processo local, iniciado pelo cliente | serviço web, sempre no ar |
+| Onde funciona | só na máquina onde está instalado | qualquer aparelho, inclusive celular |
+| Onde se conecta | Claude Code, Claude Desktop | claude.ai como conector personalizado |
+| Precisa hospedar | não | sim |
+
+Para o modo remoto — usar o `pdpj` no Claude de qualquer aparelho, como
+qualquer outro conector — siga [docs/conector-remoto.md](docs/conector-remoto.md).
+O resto desta seção cobre o modo local.
+
 ### Registrar no Claude Code
 
 Dentro do diretório do projeto:
@@ -143,6 +156,8 @@ opcionais.
 | `PDPJ_CACHE_TTL` | `300` | Cache das consultas em segundos (`0` desativa) |
 | `PDPJ_TIMEOUT` | `30000` | Tempo limite por chamada, em milissegundos |
 | `PDPJ_DEMO` | desligado | `1` responde com uma fixture local, sem rede |
+| `PDPJ_AUTH_TOKEN` | — | Só no modo HTTP: exige `Authorization: Bearer` em `/mcp` |
+| `PORT` | `8080` | Só no modo HTTP: porta de escuta |
 
 **Sobre a chave.** O padrão embutido é a chave pública que o próprio CNJ divulga
 na [documentação da API](https://datajud-wiki.cnj.jus.br/api-publica/acesso) —
@@ -195,17 +210,20 @@ pelo DJEN, e com as ressalvas da seção anterior. Além disso:
 ## Desenvolvimento
 
 ```bash
-npm run build     # compila TypeScript para dist/
-npm run watch     # recompila ao salvar
-npm test          # build + suíte de testes (node:test)
-npm run inspector # MCP Inspector sobre o servidor compilado
+npm run build      # compila TypeScript para dist/
+npm run watch      # recompila ao salvar
+npm test           # build + suíte de testes (node:test)
+npm start          # servidor local (stdio)
+npm run start:http # servidor remoto (Streamable HTTP)
+npm run inspector  # MCP Inspector sobre o servidor compilado
 ```
 
 Estrutura:
 
 ```
 src/
-  index.ts          entrada: McpServer + transporte stdio
+  index.ts          entrada local: McpServer + transporte stdio
+  http.ts           entrada remota: Streamable HTTP stateless, com Bearer token
   config.ts         variáveis de ambiente (carrega .env sem dependências)
   constants.ts      limites de resposta e paginação
   types.ts          tipos do domínio
@@ -224,9 +242,10 @@ src/
 test/               testes unitários e de integração ponta a ponta
 ```
 
-Os testes de integração sobem o servidor em memória (`InMemoryTransport`) e
-chamam as ferramentas como um cliente MCP faria, em modo demonstração — a suíte
-roda sem acesso à rede.
+Os testes de integração sobem o servidor de dois jeitos: em memória
+(`InMemoryTransport`) e por HTTP numa porta livre, chamando as ferramentas como
+um cliente MCP faria. Tudo em modo demonstração — a suíte roda sem acesso à
+rede externa.
 
 ---
 
