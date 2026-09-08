@@ -41,9 +41,11 @@ test('expõe todas as ferramentas esperadas', async () => {
   assert.deepEqual(nomes, [
     'pdpj_analisar_processo',
     'pdpj_buscar_processos',
+    'pdpj_buscar_publicacoes',
     'pdpj_comparar_processos',
     'pdpj_consulta_avancada',
     'pdpj_consultar_processo',
+    'pdpj_identificar_envolvidos',
     'pdpj_listar_movimentos',
     'pdpj_listar_tribunais',
     'pdpj_status',
@@ -198,4 +200,78 @@ test('pdpj_status informa o modo de demonstração sem expor a chave', async () 
   const md = texto(r);
   assert.match(md, /Modo demonstração/);
   assert.doesNotMatch(md, /cDZHYzlZa0JadVREZDJCendQbXY/);
+});
+
+test('pdpj_identificar_envolvidos separa dado estruturado de extração de texto', async () => {
+  const r = await client.callTool({
+    name: 'pdpj_identificar_envolvidos',
+    arguments: { numero: '1000123-69.2023.8.26.0100', response_format: 'json' },
+  });
+  const dados = dadosDe<{
+    advogados: { nome: string; oab: string | null; intimacoes: number }[];
+    partes: { nome: string; polo: string | null }[];
+    auxiliares: { papel: string; nome: string; origem: string }[];
+  }>(r);
+
+  // Advogados vêm de campo estruturado do DJEN.
+  const mariana = dados.advogados.find((a) => a.nome === 'Mariana Souza Prado');
+  assert.ok(mariana, 'deveria consolidar a advogada das duas publicações');
+  assert.equal(mariana.oab, '214556');
+  assert.equal(mariana.intimacoes, 2);
+
+  assert.ok(dados.partes.some((p) => p.polo === 'ATIVO'));
+
+  // Auxiliares saem do texto e precisam declarar essa origem.
+  const aj = dados.auxiliares.find((a) => a.papel === 'administrador_judicial');
+  assert.ok(aj, 'deveria extrair o administrador judicial do texto');
+  assert.equal(aj.nome, 'Ricardo Alves Monteiro');
+  assert.match(aj.origem, /texto da publicação/);
+
+  assert.ok(dados.auxiliares.some((a) => a.papel === 'perito'));
+});
+
+test('pdpj_identificar_envolvidos avisa que a extração precisa de conferência', async () => {
+  const r = await client.callTool({
+    name: 'pdpj_identificar_envolvidos',
+    arguments: { numero: '1000123-69.2023.8.26.0100' },
+  });
+  const md = texto(r);
+  assert.match(md, /Advogados constituídos/);
+  assert.match(md, /não de campo estruturado/);
+  assert.match(md, /OAB/);
+});
+
+test('pdpj_buscar_publicacoes exige ao menos um critério', async () => {
+  const r = await client.callTool({ name: 'pdpj_buscar_publicacoes', arguments: {} });
+  assert.equal((r as { isError?: boolean }).isError, true);
+  assert.match(texto(r), /numero, oab .*nome_advogado/s);
+});
+
+test('pdpj_buscar_publicacoes lista as publicações do processo', async () => {
+  const r = await client.callTool({
+    name: 'pdpj_buscar_publicacoes',
+    arguments: { numero: '1000123-69.2023.8.26.0100', response_format: 'json' },
+  });
+  const dados = dadosDe<{ total: number; publicacoes: { advogados: unknown[] }[] }>(r);
+  assert.equal(dados.total, 2);
+  assert.ok(dados.publicacoes[0].advogados.length >= 1);
+});
+
+test('pdpj_buscar_publicacoes só traz o texto quando pedido', async () => {
+  const sem = await client.callTool({
+    name: 'pdpj_buscar_publicacoes',
+    arguments: { numero: '1000123-69.2023.8.26.0100', response_format: 'json' },
+  });
+  const com = await client.callTool({
+    name: 'pdpj_buscar_publicacoes',
+    arguments: {
+      numero: '1000123-69.2023.8.26.0100',
+      incluir_texto: true,
+      response_format: 'json',
+    },
+  });
+  const a = dadosDe<{ publicacoes: Record<string, unknown>[] }>(sem);
+  const b = dadosDe<{ publicacoes: Record<string, unknown>[] }>(com);
+  assert.equal(a.publicacoes[0].texto, undefined);
+  assert.ok(typeof b.publicacoes[0].texto === 'string');
 });

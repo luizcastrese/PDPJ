@@ -43,6 +43,8 @@ export interface Config {
   apiKey: string;
   usandoChavePadrao: boolean;
   baseUrl: string;
+  /** Base da API de comunicações do DJEN (aberta, sem chave). */
+  djenUrl: string;
   cacheTtlMs: number;
   timeoutMs: number;
   /** Quando ligado, não há chamadas de rede: usa a fixture local de demonstração. */
@@ -53,6 +55,7 @@ export const config: Config = {
   apiKey: process.env.PDPJ_API_KEY || CHAVE_PUBLICA_CNJ,
   usandoChavePadrao: !process.env.PDPJ_API_KEY,
   baseUrl: process.env.PDPJ_BASE_URL || 'https://api-publica.datajud.cnj.jus.br',
+  djenUrl: process.env.PDPJ_DJEN_URL || 'https://comunicaapi.pje.jus.br',
   cacheTtlMs: Number(process.env.PDPJ_CACHE_TTL ?? 300) * 1000,
   timeoutMs: Number(process.env.PDPJ_TIMEOUT ?? 30000),
   demo: process.env.PDPJ_DEMO === '1' || process.env.PDPJ_DEMO === 'true',

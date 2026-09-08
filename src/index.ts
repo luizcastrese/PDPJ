@@ -9,6 +9,7 @@ import { registrarFerramentasProcesso } from './tools/processo.js';
 import { registrarFerramentasBusca } from './tools/busca.js';
 import { registrarFerramentaComparar } from './tools/comparar.js';
 import { registrarFerramentasReferencia } from './tools/referencia.js';
+import { registrarFerramentasPessoas } from './tools/pessoas.js';
 
 /**
  * Servidor MCP da API Pública do DataJud (PDPJ/CNJ).
@@ -30,6 +31,11 @@ export function criarServidor(): McpServer {
         'históricos longos use pdpj_listar_movimentos com filtros. Sem número, use',
         'pdpj_buscar_processos informando o tribunal.',
         '',
+        'O DataJud não traz partes, advogados nem auxiliares da justiça. Esses nomes vêm do DJEN',
+        '(Diário de Justiça Eletrônico Nacional) por pdpj_identificar_envolvidos e',
+        'pdpj_buscar_publicacoes. Advogados e partes são dado estruturado; administrador judicial,',
+        'perito e demais auxiliares são extraídos do texto das publicações e exigem conferência.',
+        '',
         'A situação processual que este servidor reporta é inferida do texto dos movimentos, não é',
         'um campo oficial. Ao relatar resultados ao usuário, deixe claro que se trata de leitura de',
         'metadados públicos e cite a data da última atualização da base.',
@@ -41,6 +47,7 @@ export function criarServidor(): McpServer {
   registrarFerramentasBusca(server);
   registrarFerramentaComparar(server);
   registrarFerramentasReferencia(server);
+  registrarFerramentasPessoas(server);
 
   return server;
 }

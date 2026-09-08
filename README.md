@@ -6,7 +6,9 @@ operar, o assistente passa a ter as ferramentas: você pede em português, ele
 consulta o tribunal certo e devolve a análise.
 
 ```
-você  →  Claude (a interface)  →  pdpj-mcp-server  →  api-publica.datajud.cnj.jus.br
+                                                  ┌→ DataJud  (metadados e movimentos)
+você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
+                                                  └→ DJEN     (publicações, advogados, OAB)
 ```
 
 ---
@@ -20,6 +22,9 @@ você  →  Claude (a interface)  →  pdpj-mcp-server  →  api-publica.datajud
 > "Compara esses cinco processos e diz qual está mais travado"
 > "Quais execuções fiscais foram ajuizadas no TJSP em 2023?"
 > "De que tribunal é o número 0010123-81.2019.5.02.0011?"
+> "Quem são os advogados desse processo?"
+> "Quem foi nomeado administrador judicial?"
+> "Quais processos têm intimação para a OAB/SP 214556?"
 
 ---
 
@@ -33,6 +38,8 @@ você  →  Claude (a interface)  →  pdpj-mcp-server  →  api-publica.datajud
 | `pdpj_buscar_processos` | Busca por classe, assunto, órgão julgador, grau e período de ajuizamento |
 | `pdpj_comparar_processos` | Compara de 2 a 10 processos lado a lado, com agregados |
 | `pdpj_consulta_avancada` | Query Elasticsearch livre, para o que os filtros não cobrem |
+| `pdpj_identificar_envolvidos` | Advogados (nome e OAB), partes e auxiliares da justiça: administrador judicial, perito, curador, inventariante, leiloeiro |
+| `pdpj_buscar_publicacoes` | Publicações do DJEN por processo, OAB, nome de advogado ou de parte |
 | `pdpj_validar_numero` | Valida o dígito verificador e identifica o tribunal — offline |
 | `pdpj_listar_tribunais` | Os 91 tribunais cobertos e seus aliases — offline |
 | `pdpj_status` | Como o servidor está configurado (sem expor a chave) |
@@ -56,6 +63,27 @@ Os movimentos são classificados pelo **nome** na Tabela Processual Unificada do
 CNJ, com a ordem de precedência calibrada para não confundir "cumprimento de
 sentença", "conclusão para julgamento" ou "sessão de julgamento" com o ato de
 sentenciar.
+
+### Duas fontes, dois graus de confiança
+
+O servidor consulta duas bases públicas, e a diferença entre elas importa:
+
+| | DataJud | DJEN |
+| --- | --- | --- |
+| Traz | Metadados e movimentos | Publicações e intimações |
+| Advogados / partes | Não existem | **Campo estruturado** — nome e OAB |
+| Administrador judicial, perito | Não existem | Só no **corpo do texto** |
+
+Advogados e partes vêm prontos do DJEN: são dado. Já administrador judicial,
+perito, curador, inventariante e leiloeiro não são campo em base alguma — o
+servidor os **extrai do texto** da publicação, e por isso devolve junto o trecho
+de origem e um aviso explícito. Pode haver falso positivo e falso negativo;
+confira antes de qualquer uso profissional.
+
+A leitura do nome não depende de maiúsculas (publicações vêm ora em caixa alta,
+ora não): ela acumula palavras até esbarrar em pontuação, em palavra funcional
+ou no texto voltando a correr — o que evita colar "prestará contas" no fim de
+uma razão social.
 
 ---
 
@@ -110,7 +138,8 @@ opcionais.
 | Variável | Padrão | Para que serve |
 | --- | --- | --- |
 | `PDPJ_API_KEY` | chave pública do CNJ | Chave enviada no header `Authorization: APIKey …` |
-| `PDPJ_BASE_URL` | `https://api-publica.datajud.cnj.jus.br` | Endereço base da API |
+| `PDPJ_BASE_URL` | `https://api-publica.datajud.cnj.jus.br` | Endereço base da API do DataJud |
+| `PDPJ_DJEN_URL` | `https://comunicaapi.pje.jus.br` | Endereço base da API do DJEN (aberta, sem chave) |
 | `PDPJ_CACHE_TTL` | `300` | Cache das consultas em segundos (`0` desativa) |
 | `PDPJ_TIMEOUT` | `30000` | Tempo limite por chamada, em milissegundos |
 | `PDPJ_DEMO` | desligado | `1` responde com uma fixture local, sem rede |
@@ -148,14 +177,18 @@ consulta perdida.
 
 ## Limites do dado
 
-O DataJud publica **metadados**, nunca o conteúdo dos autos. Não há nomes de
-partes, petições, decisões na íntegra ou documentos. Além disso:
+O DataJud publica **metadados**, nunca o conteúdo dos autos: não há partes,
+advogados, petições, decisões na íntegra ou documentos. Esses nomes só chegam
+pelo DJEN, e com as ressalvas da seção anterior. Além disso:
 
 - Processos em segredo de justiça não aparecem, ou aparecem parcialmente.
 - A carga é feita pelos tribunais; há defasagem, e ela varia por tribunal. As
   ferramentas sempre reportam a data da última atualização da base.
 - A **situação processual é inferida** pelo texto dos movimentos — é uma leitura,
   não um campo oficial. Para decisão profissional, confirme no sistema do tribunal.
+- O DJEN cobre as comunicações a partir da adesão de cada tribunal. Processo
+  antigo, em papel ou em segredo de justiça pode não ter publicação eletrônica —
+  ausência de advogado no resultado não significa ausência de advogado nos autos.
 
 ---
 
@@ -179,6 +212,8 @@ src/
   schemas/          schemas Zod de entrada das ferramentas
   services/
     cnj.ts          número único: validação, dígito verificador, decomposição
+    djen.ts         cliente do DJEN, com leitura tolerante a variações de schema
+    pessoas.ts      consolidação de advogados e extração de auxiliares da justiça
     tribunais.ts    catálogo dos 91 índices e dedução pelo número
     datajud.ts      cliente HTTP, cache e erros acionáveis
     analise.ts      motor de análise: categorias, métricas, marcos, alertas

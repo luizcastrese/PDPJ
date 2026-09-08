@@ -195,3 +195,59 @@ export const ListarTribunaisInput = {
     ),
   response_format: FormatoResposta,
 };
+
+export const BuscarPublicacoesInput = {
+  numero: NumeroProcesso.optional().describe(
+    'Número CNJ do processo cujas publicações se quer. Opcional se for informada uma OAB ou um nome.',
+  ),
+  oab: z
+    .string()
+    .optional()
+    .describe('Número de inscrição na OAB, só dígitos (ex.: "214556"). Use junto com uf_oab.'),
+  uf_oab: z
+    .string()
+    .length(2)
+    .optional()
+    .describe('UF da seccional da OAB (ex.: "SP").'),
+  nome_advogado: z.string().optional().describe('Nome do advogado a procurar nas intimações.'),
+  nome_parte: z.string().optional().describe('Nome da parte a procurar nas publicações.'),
+  tribunal: AliasTribunal.optional().describe(
+    'Sigla do tribunal para restringir a busca (ex.: "TJSP"). Deduzida do número quando ele é informado.',
+  ),
+  de: DataIso.optional().describe('Data inicial de disponibilização (AAAA-MM-DD).'),
+  ate: DataIso.optional().describe('Data final de disponibilização (AAAA-MM-DD).'),
+  incluir_texto: z
+    .boolean()
+    .default(false)
+    .describe('Inclui o corpo completo de cada publicação (respostas ficam bem maiores).'),
+  incluir_bruto: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Anexa o primeiro registro cru da API, sem normalização. Use para diagnosticar campos não reconhecidos.',
+    ),
+  limit: Limit,
+  offset: Offset,
+  ignorar_digito: IgnorarDigito,
+  response_format: FormatoResposta,
+};
+
+export const IdentificarEnvolvidosInput = {
+  numero: NumeroProcesso,
+  tribunal: AliasTribunal.optional().describe(
+    'Sigla do tribunal, quando a dedução pelo número não servir.',
+  ),
+  max_publicacoes: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(50)
+    .describe('Quantas publicações varrer para montar o quadro de envolvidos.'),
+  incluir_contexto: z
+    .boolean()
+    .default(true)
+    .describe('Mostra o trecho da publicação de onde cada auxiliar da justiça foi extraído.'),
+  ignorar_digito: IgnorarDigito,
+  response_format: FormatoResposta,
+};
