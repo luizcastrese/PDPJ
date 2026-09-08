@@ -7,7 +7,7 @@ O servidor tem dois modos. O que você escolhe depende de onde quer usá-lo:
 | Como roda | processo local, iniciado pelo cliente | serviço web, sempre no ar |
 | Onde funciona | só na máquina onde está instalado | qualquer aparelho, inclusive celular |
 | Onde se conecta | Claude Code, Claude Desktop | claude.ai como conector personalizado |
-| Precisa hospedar | não | sim |
+| Precisa de URL pública | não | sim — por túnel ou hospedagem |
 
 Este documento cobre o segundo caso: publicar o servidor e ligá-lo ao Claude
 como qualquer outro conector.
@@ -31,11 +31,52 @@ Ele vai na variável `PDPJ_AUTH_TOKEN` do serviço e no cabeçalho
 
 ## 2. Publique o serviço
 
+Há dois caminhos. O túnel é imediato e não envolve plataforma nenhuma; a
+hospedagem é para quando você quiser o conector no ar sem depender do seu Mac.
+
+### Caminho rápido: túnel a partir do seu Mac
+
+O servidor continua rodando na sua máquina; o túnel só lhe dá um endereço
+público. Nada é enviado para lugar nenhum, não há conta a criar nem custo.
+
+Instale o cloudflared uma vez:
+
+```bash
+brew install cloudflared
+```
+
+Em um terminal, suba o servidor:
+
+```bash
+cd ~/PDPJ
+PDPJ_AUTH_TOKEN=<seu-token> npm run start:http
+```
+
+Em outro terminal, abra o túnel:
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+O cloudflared imprime uma URL do tipo
+`https://algo-aleatorio.trycloudflare.com`. É ela que vai no conector, com
+`/mcp` no fim.
+
+O que esperar desse caminho:
+
+- Funciona só enquanto os dois comandos estiverem rodando e o Mac ligado.
+- A URL muda a cada vez que você abre o túnel, e o conector precisa ser
+  atualizado junto. Uma conta gratuita da Cloudflare permite um túnel nomeado,
+  com endereço fixo, se isso incomodar.
+- Bom para testar hoje e decidir depois se vale hospedar.
+
+### Caminho definitivo: hospedar
+
 O repositório traz um `Dockerfile` pronto. Qualquer plataforma que aceite Docker
 serve. O serviço escuta na porta indicada por `PORT` (8080 se nada for dito) e
 expõe `/mcp` para o MCP e `/health` para a sonda de saúde.
 
-### Railway
+#### Railway
 
 ```bash
 npm i -g @railway/cli
@@ -46,12 +87,12 @@ railway variables --set "PDPJ_AUTH_TOKEN=<seu-token>"
 railway domain          # gera a URL pública https
 ```
 
-### Render
+#### Render
 
 Crie um Web Service apontando para o repositório, ambiente Docker, e adicione
 `PDPJ_AUTH_TOKEN` nas variáveis. O health check é `/health`.
 
-### Fly.io
+#### Fly.io
 
 ```bash
 fly launch --no-deploy
@@ -59,7 +100,7 @@ fly secrets set PDPJ_AUTH_TOKEN=<seu-token>
 fly deploy
 ```
 
-### Google Cloud Run
+#### Google Cloud Run
 
 ```bash
 gcloud run deploy pdpj-mcp \
@@ -71,7 +112,7 @@ gcloud run deploy pdpj-mcp \
 `--allow-unauthenticated` libera a camada do Google; quem protege o servidor é o
 seu token.
 
-### Confira antes de seguir
+#### Confira antes de seguir
 
 ```bash
 curl https://<sua-url>/health

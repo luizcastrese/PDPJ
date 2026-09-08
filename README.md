@@ -103,7 +103,7 @@ npm run build
 | Como roda | processo local, iniciado pelo cliente | serviço web, sempre no ar |
 | Onde funciona | só na máquina onde está instalado | qualquer aparelho, inclusive celular |
 | Onde se conecta | Claude Code, Claude Desktop | claude.ai como conector personalizado |
-| Precisa hospedar | não | sim |
+| Precisa de URL pública | não | sim — por túnel (1 comando) ou hospedagem |
 
 Para o modo remoto — usar o `pdpj` no Claude de qualquer aparelho, como
 qualquer outro conector — siga [docs/conector-remoto.md](docs/conector-remoto.md).
