@@ -170,15 +170,20 @@ claude mcp add -s user -t http pdpj https://<sua-url>/mcp \
 | `401` | Token errado, ou ausente onde o cliente não manda cabeçalho — use `/mcp/<token>` |
 | Conecta mas não lista ferramentas | Confirme com `curl <url>/health`; se `protegido` vier `false`, o token não chegou ao serviço |
 
-Diagnóstico em dois passos, do mais próximo ao mais distante:
+Em vez de conferir item a item, rode o diagnóstico — ele percorre a corrente
+do servidor local até o túnel e diz onde quebrou:
 
 ```bash
-curl http://localhost:8080/health      # o servidor está de pé?
-curl https://<sua-url>/health          # o túnel chega até ele?
+npm run diagnostico
+npm run diagnostico -- https://<sua-url>   # inclui o teste ponta a ponta
 ```
 
-Se o primeiro responde e o segundo não, o problema é o túnel. Se nenhum
-responde, o servidor não está rodando.
+Com a URL informada e tudo certo, ele imprime a URL completa, com token, pronta
+para colar no conector.
+
+Rode numa aba de terminal **livre**. O servidor e o cloudflared ocupam as abas
+onde foram iniciados: comandos digitados ali não executam, ficam esperando. Se
+um comando "não retornou nada", quase sempre é isso.
 
 ---
 

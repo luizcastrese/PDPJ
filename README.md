@@ -219,6 +219,7 @@ npm test           # build + suíte de testes (node:test)
 npm start          # servidor local (stdio)
 npm run start:http # servidor remoto (Streamable HTTP)
 npm run inspector  # MCP Inspector sobre o servidor compilado
+npm run diagnostico # verifica servidor, token e túnel do modo conector
 ```
 
 Estrutura:
