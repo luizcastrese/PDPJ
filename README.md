@@ -159,7 +159,7 @@ opcionais.
 | `PDPJ_CACHE_TTL` | `300` | Cache das consultas em segundos (`0` desativa) |
 | `PDPJ_TIMEOUT` | `30000` | Tempo limite por chamada, em milissegundos |
 | `PDPJ_DEMO` | desligado | `1` responde com uma fixture local, sem rede |
-| `PDPJ_AUTH_TOKEN` | — | Só no modo HTTP: exige `Authorization: Bearer` em `/mcp` |
+| `PDPJ_AUTH_TOKEN` | — | Só no modo HTTP: exige o token em `/mcp`, por cabeçalho `Authorization: Bearer` ou no caminho `/mcp/<token>` |
 | `PORT` | `8080` | Só no modo HTTP: porta de escuta |
 
 **Sobre a chave.** O padrão embutido é a chave pública que o próprio CNJ divulga

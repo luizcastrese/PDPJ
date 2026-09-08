@@ -131,13 +131,25 @@ expor a URL.
 
 ## 3. Ligue ao Claude
 
-Em **claude.ai → Configurações → Conectores → Adicionar conector personalizado**:
+Em **claude.ai → Configurações → Conectores → Adicionar conector personalizado**,
+o único campo obrigatório é a URL, e a tela de autenticação oferece OAuth — não
+há onde digitar um cabeçalho. Por isso o servidor também aceita o token no
+próprio caminho:
 
-- **URL**: `https://<sua-url>/mcp`
-- **Autenticação**: cabeçalho `Authorization` com o valor `Bearer <seu-token>`
+- **URL**: `https://<sua-url>/mcp/<seu-token>`
+
+O `/mcp` sozinho continua valendo para clientes que deixam definir cabeçalhos
+(Claude Code, curl, Inspector), com `Authorization: Bearer <seu-token>`.
 
 Feito isso, o `pdpj` aparece na lista de conectores em qualquer aparelho onde
 você use o Claude — navegador, desktop, celular — como Gamma ou Drive.
+
+**O que muda ao pôr o token na URL.** Ele deixa de ser um segredo de cabeçalho e
+passa a viajar no endereço: aparece em logs de proxy e no histórico de quem
+tiver acesso à máquina. Para este servidor o risco é contido — as ferramentas
+são somente leitura sobre bases públicas, e o pior caso é alguém consumir a sua
+cota da API do CNJ. Ainda assim, trate a URL completa como senha e gire o token
+(`.env` + reinício) se ela vazar.
 
 Se preferir usar no Claude Code apontando para o serviço remoto em vez do
 processo local:
@@ -146,6 +158,27 @@ processo local:
 claude mcp add -s user -t http pdpj https://<sua-url>/mcp \
   -H "Authorization: Bearer <seu-token>"
 ```
+
+---
+
+## Quando o conector falha
+
+| Sintoma | Causa provável |
+| --- | --- |
+| `502` na verificação | O túnel ou o host não alcança o servidor: ele parou, ou está em outra porta |
+| `404` | Faltou `/mcp` (ou `/mcp/<token>`) no fim da URL |
+| `401` | Token errado, ou ausente onde o cliente não manda cabeçalho — use `/mcp/<token>` |
+| Conecta mas não lista ferramentas | Confirme com `curl <url>/health`; se `protegido` vier `false`, o token não chegou ao serviço |
+
+Diagnóstico em dois passos, do mais próximo ao mais distante:
+
+```bash
+curl http://localhost:8080/health      # o servidor está de pé?
+curl https://<sua-url>/health          # o túnel chega até ele?
+```
+
+Se o primeiro responde e o segundo não, o problema é o túnel. Se nenhum
+responde, o servidor não está rodando.
 
 ---
 

@@ -118,6 +118,26 @@ test('é stateless: cada requisição vale por si, sem sessão', async () => {
   assert.match(corpo.result.structuredContent.base_url, /datajud/);
 });
 
+test('aceita o token no caminho, para clientes que só têm o campo da URL', async () => {
+  const r = await fetch(`${base}/mcp/token-de-teste`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'tools/list', params: {} }),
+  });
+  assert.equal(r.status, 200);
+  const corpo = (await r.json()) as { result: { tools: unknown[] } };
+  assert.equal(corpo.result.tools.length, 11);
+});
+
+test('recusa token errado no caminho', async () => {
+  const r = await fetch(`${base}/mcp/token-errado`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/list', params: {} }),
+  });
+  assert.equal(r.status, 401);
+});
+
 test('a chave da API nunca aparece na resposta', async () => {
   const r = await chamar({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'pdpj_status', arguments: {} } });
   assert.doesNotMatch(await r.text(), /cDZHYzlZa0JadVREZDJCendQbXY/);

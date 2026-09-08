@@ -43,21 +43,33 @@ function json(res: ServerResponse, status: number, corpo: unknown): void {
   res.end(texto);
 }
 
-/** Confere o Bearer token, quando um foi configurado. */
-function autorizado(req: IncomingMessage): boolean {
+/** Compara em tempo constante, para não vazar o token por temporização. */
+function iguais(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diferenca = 0;
+  for (let i = 0; i < a.length; i++) {
+    diferenca |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diferenca === 0;
+}
+
+/**
+ * Confere o token, quando um foi configurado. Aceita dois lugares:
+ *
+ *   - cabeçalho `Authorization: Bearer <token>` — o jeito usual, para
+ *     clientes que deixam definir cabeçalhos (Claude Code, curl);
+ *   - último segmento do caminho, `/mcp/<token>` — para clientes cuja tela
+ *     de conector só tem o campo da URL.
+ */
+function autorizado(req: IncomingMessage, tokenNoCaminho?: string): boolean {
   const esperado = tokenConfigurado();
   if (!esperado) return true;
 
   const cabecalho = req.headers.authorization ?? '';
-  const recebido = cabecalho.replace(/^Bearer\s+/i, '').trim();
-  if (recebido.length !== esperado.length) return false;
+  const doCabecalho = cabecalho.replace(/^Bearer\s+/i, '').trim();
+  if (doCabecalho && iguais(doCabecalho, esperado)) return true;
 
-  // Comparação de tempo constante, para não vazar o token por temporização.
-  let diferenca = 0;
-  for (let i = 0; i < esperado.length; i++) {
-    diferenca |= recebido.charCodeAt(i) ^ esperado.charCodeAt(i);
-  }
-  return diferenca === 0;
+  return Boolean(tokenNoCaminho) && iguais(tokenNoCaminho!, esperado);
 }
 
 async function lerCorpo(req: IncomingMessage): Promise<unknown> {
@@ -88,11 +100,15 @@ async function tratar(req: IncomingMessage, res: ServerResponse): Promise<void> 
     });
   }
 
-  if (url.pathname !== '/mcp') {
-    return json(res, 404, { error: 'Rota não encontrada. Use /mcp.' });
+  // Aceita /mcp e /mcp/<token>.
+  const rotaMcp = /^\/mcp(?:\/([^/]+))?\/?$/.exec(url.pathname);
+  if (!rotaMcp) {
+    return json(res, 404, {
+      error: 'Rota não encontrada. Use /mcp, ou /mcp/<token> se o seu cliente só aceitar a URL.',
+    });
   }
 
-  if (!autorizado(req)) {
+  if (!autorizado(req, rotaMcp[1])) {
     res.setHeader('WWW-Authenticate', 'Bearer');
     return json(res, 401, {
       jsonrpc: '2.0',
