@@ -65,10 +65,34 @@ O cloudflared imprime uma URL do tipo
 O que esperar desse caminho:
 
 - Funciona só enquanto os dois comandos estiverem rodando e o Mac ligado.
-- A URL muda a cada vez que você abre o túnel, e o conector precisa ser
-  atualizado junto. Uma conta gratuita da Cloudflare permite um túnel nomeado,
-  com endereço fixo, se isso incomodar.
-- Bom para testar hoje e decidir depois se vale hospedar.
+- **A URL muda a cada execução do cloudflared.** Toda vez que você reinicia o
+  túnel, o conector aponta para um endereço morto e passa a falhar com 502 —
+  é preciso editá-lo com a URL nova. Em uso diário isso cansa rápido.
+- Bom para provar que funciona, ruim para conviver.
+
+### Caminho intermediário: túnel com endereço fixo (ngrok)
+
+Resolve exatamente o problema acima: continua rodando do seu Mac, sem
+hospedagem, mas o endereço não muda mais — o conector é configurado uma vez e
+pronto. A conta gratuita do ngrok dá um domínio estático.
+
+```bash
+brew install ngrok
+ngrok config add-authtoken <token-da-sua-conta-ngrok>
+```
+
+Pegue seu domínio estático no painel do ngrok (algo como
+`nome-escolhido.ngrok-free.app`) e suba o túnel sempre com ele:
+
+```bash
+ngrok http 8080 --url=nome-escolhido.ngrok-free.app
+```
+
+A URL do conector passa a ser estável:
+`https://nome-escolhido.ngrok-free.app/mcp/<seu-token>`
+
+Continua dependendo do Mac ligado e do comando rodando, mas você para de
+reconfigurar o conector a cada reinício.
 
 ### Caminho definitivo: hospedar
 
