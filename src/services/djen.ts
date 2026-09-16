@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { ErroPdpj } from './datajud.js';
-import { publicacoesDemo } from './demo.js';
+import { publicacoesDemo, publicacoesRecuperacaoDemo, NUMERO_RJ_DEMO } from './demo.js';
 
 /**
  * Cliente do DJEN — Diário de Justiça Eletrônico Nacional, exposto pela API
@@ -179,7 +179,10 @@ export async function buscarPublicacoes(
   filtros: FiltrosDjen,
 ): Promise<RespostaPublicacoes> {
   if (config.demo) {
-    const itens = publicacoesDemo();
+    const pedeRj =
+      (filtros.numeroProcesso ?? '').includes(NUMERO_RJ_DEMO) ||
+      /andrade/i.test(filtros.nomeParte ?? '');
+    const itens = pedeRj ? publicacoesRecuperacaoDemo() : publicacoesDemo();
     return {
       total: itens.length,
       publicacoes: itens.map((i) => normalizarPublicacao(i, Boolean(filtros.incluirBruto))),

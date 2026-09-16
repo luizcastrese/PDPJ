@@ -88,10 +88,10 @@ test('faz o handshake de initialize por HTTP', async () => {
   assert.equal(corpo.result.serverInfo.name, 'pdpj-mcp-server');
 });
 
-test('lista as 11 ferramentas por HTTP', async () => {
+test('lista as 15 ferramentas por HTTP', async () => {
   const r = await chamar({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
   const corpo = (await r.json()) as { result: { tools: { name: string }[] } };
-  assert.equal(corpo.result.tools.length, 11);
+  assert.equal(corpo.result.tools.length, 15);
   assert.ok(corpo.result.tools.some((t) => t.name === 'pdpj_identificar_envolvidos'));
 });
 
@@ -126,7 +126,7 @@ test('aceita o token no caminho, para clientes que só têm o campo da URL', asy
   });
   assert.equal(r.status, 200);
   const corpo = (await r.json()) as { result: { tools: unknown[] } };
-  assert.equal(corpo.result.tools.length, 11);
+  assert.equal(corpo.result.tools.length, 15);
 });
 
 test('recusa token errado no caminho', async () => {

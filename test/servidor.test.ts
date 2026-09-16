@@ -40,14 +40,18 @@ test('expõe todas as ferramentas esperadas', async () => {
   const nomes = tools.map((t) => t.name).sort();
   assert.deepEqual(nomes, [
     'pdpj_analisar_processo',
+    'pdpj_ativos_garantias',
     'pdpj_buscar_processos',
     'pdpj_buscar_publicacoes',
     'pdpj_comparar_processos',
     'pdpj_consulta_avancada',
     'pdpj_consultar_processo',
+    'pdpj_dossie_recuperacao',
+    'pdpj_historico_empresa',
     'pdpj_identificar_envolvidos',
     'pdpj_listar_movimentos',
     'pdpj_listar_tribunais',
+    'pdpj_relacao_credores',
     'pdpj_status',
     'pdpj_validar_numero',
   ]);
@@ -274,4 +278,158 @@ test('pdpj_buscar_publicacoes só traz o texto quando pedido', async () => {
   const b = dadosDe<{ publicacoes: Record<string, unknown>[] }>(com);
   assert.equal(a.publicacoes[0].texto, undefined);
   assert.ok(typeof b.publicacoes[0].texto === 'string');
+});
+
+/* -------------------- recuperação judicial, ponta a ponta ------------------ */
+
+const RJ = '1005544-74.2022.8.26.0100';
+
+test('pdpj_dossie_recuperacao entrega as seções do dossiê', async () => {
+  const r = await client.callTool({ name: 'pdpj_dossie_recuperacao', arguments: { numero: RJ } });
+  const md = texto(r);
+
+  for (const secao of [
+    '## Identificação',
+    '## Motivo do pedido',
+    '## Fase e marcos',
+    '## Fatores legais mais relevantes',
+    '## Relação de credores',
+    '## Ativos',
+    '## O que não dá para obter por aqui',
+  ]) {
+    assert.ok(md.includes(secao), `seção ausente: ${secao}`);
+  }
+
+  const dados = dadosDe<{
+    fase_id: string;
+    parece_recuperacao: boolean;
+    devedora: string | null;
+    cnpj: string | null;
+    marcos: unknown[];
+    fatores_legais: unknown[];
+  }>(r);
+
+  assert.equal(dados.parece_recuperacao, true);
+  assert.equal(dados.fase_id, 'concedida');
+  assert.match(dados.devedora ?? '', /Metalúrgica Andrade/);
+  assert.equal(dados.cnpj, '12.345.678/0001-90');
+  assert.ok(dados.marcos.length >= 10);
+  assert.ok(dados.fatores_legais.length >= 3);
+});
+
+test('o dossiê sempre carrega a ressalva sobre extração de texto', async () => {
+  const md = texto(
+    await client.callTool({ name: 'pdpj_dossie_recuperacao', arguments: { numero: RJ } }),
+  );
+  assert.match(md, /extraídos de texto/);
+  assert.match(md, /não um inventário patrimonial/);
+});
+
+test('pdpj_relacao_credores pagina e filtra por classe', async () => {
+  const r = await client.callTool({
+    name: 'pdpj_relacao_credores',
+    arguments: { numero: RJ, classe: 'ii_garantia_real', response_format: 'json' },
+  });
+  const dados = dadosDe<{
+    credores: { nome: string; valor: number; classe: string }[];
+    total_credores: number;
+    credores_apos_filtros: number;
+  }>(r);
+
+  assert.equal(dados.total_credores, 10, 'o total original é preservado');
+  assert.equal(dados.credores_apos_filtros, 2);
+  assert.ok(dados.credores.every((c) => c.classe === 'ii_garantia_real'));
+  assert.ok(
+    dados.credores[0].valor >= dados.credores[1].valor,
+    'a ordenação padrão é por valor, do maior para o menor',
+  );
+});
+
+test('pdpj_relacao_credores filtra por valor mínimo e por nome', async () => {
+  const porValor = dadosDe<{ credores_apos_filtros: number }>(
+    await client.callTool({
+      name: 'pdpj_relacao_credores',
+      arguments: { numero: RJ, valor_minimo: 1000000, response_format: 'json' },
+    }),
+  );
+  assert.equal(porValor.credores_apos_filtros, 3);
+
+  const porNome = dadosDe<{ credores: { nome: string }[] }>(
+    await client.callTool({
+      name: 'pdpj_relacao_credores',
+      arguments: { numero: RJ, contem: 'sindicato', response_format: 'json' },
+    }),
+  );
+  assert.equal(porNome.credores.length, 1);
+  assert.match(porNome.credores[0].nome, /SINDICATO/);
+});
+
+test('pdpj_ativos_garantias recorta os créditos fora do concurso', async () => {
+  const dados = dadosDe<{ gravados: { submeteASeRj: boolean; tipo: string }[] }>(
+    await client.callTool({
+      name: 'pdpj_ativos_garantias',
+      arguments: { numero: RJ, situacao: 'fora_do_concurso', response_format: 'json' },
+    }),
+  );
+  assert.ok(dados.gravados.length >= 3);
+  assert.ok(dados.gravados.every((g) => g.submeteASeRj === false));
+});
+
+test('pdpj_ativos_garantias sabe excluir as constrições', async () => {
+  const com = dadosDe<{ total_gravados: number }>(
+    await client.callTool({
+      name: 'pdpj_ativos_garantias',
+      arguments: { numero: RJ, response_format: 'json' },
+    }),
+  );
+  const sem = dadosDe<{ total_gravados: number }>(
+    await client.callTool({
+      name: 'pdpj_ativos_garantias',
+      arguments: { numero: RJ, incluir_constricoes: false, response_format: 'json' },
+    }),
+  );
+  assert.ok(sem.total_gravados < com.total_gravados);
+});
+
+test('pdpj_historico_empresa agrupa as publicações por processo', async () => {
+  const dados = dadosDe<{
+    processos: { numero: string; publicacoes: number }[];
+    empresa: string;
+  }>(
+    await client.callTool({
+      name: 'pdpj_historico_empresa',
+      arguments: { nome_empresa: 'Metalúrgica Andrade', response_format: 'json' },
+    }),
+  );
+  assert.equal(dados.processos.length, 1);
+  assert.equal(dados.processos[0].numero, RJ);
+  assert.equal(dados.processos[0].publicacoes, 2);
+});
+
+test('os prompts do dossiê estão registrados e produzem roteiro', async () => {
+  const { prompts } = await client.listPrompts();
+  const nomes = prompts.map((p) => p.name).sort();
+  assert.deepEqual(nomes, [
+    'ativos_livres_e_gravados',
+    'dossie_recuperacao_judicial',
+    'relacao_de_credores',
+  ]);
+
+  const p = await client.getPrompt({
+    name: 'dossie_recuperacao_judicial',
+    arguments: { numero: RJ },
+  });
+  const conteudo = p.messages[0].content;
+  assert.equal(conteudo.type, 'text');
+  assert.match(conteudo.text as string, /pdpj_dossie_recuperacao/);
+  assert.match(conteudo.text as string, new RegExp(RJ));
+});
+
+test('processo que não é recuperação recebe aviso, e não um dossiê inventado', async () => {
+  const r = await client.callTool({
+    name: 'pdpj_dossie_recuperacao',
+    arguments: { numero: '1000123-69.2023.8.26.0100' },
+  });
+  assert.equal(dadosDe<{ parece_recuperacao: boolean }>(r).parece_recuperacao, false);
+  assert.match(texto(r), /Nem a classe processual nem os movimentos indicam recuperação judicial/);
 });

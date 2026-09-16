@@ -25,6 +25,12 @@ você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
 > "Quem são os advogados desse processo?"
 > "Quem foi nomeado administrador judicial?"
 > "Quais processos têm intimação para a OAB/SP 214556?"
+> "Monta o dossiê da recuperação judicial 1005544-74.2022.8.26.0100"
+> "Por que essa empresa pediu recuperação judicial?"
+> "Lista os credores por classe e soma cada uma"
+> "Quanto a recuperanda deve para bancos com garantia real?"
+> "Quais bens estão gravados e o que sobra de ativo livre?"
+> "Acha a recuperação judicial da Metalúrgica Andrade"
 
 ---
 
@@ -40,9 +46,16 @@ você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
 | `pdpj_consulta_avancada` | Query Elasticsearch livre, para o que os filtros não cobrem |
 | `pdpj_identificar_envolvidos` | Advogados (nome e OAB), partes e auxiliares da justiça: administrador judicial, perito, curador, inventariante, leiloeiro |
 | `pdpj_buscar_publicacoes` | Publicações do DJEN por processo, OAB, nome de advogado ou de parte |
+| `pdpj_dossie_recuperacao` | Dossiê de uma recuperação judicial: fase, marcos da LRF, stay period, fatores legais, credores e ativos |
+| `pdpj_relacao_credores` | Relação de credores lida do edital, separada pelas classes do art. 41 |
+| `pdpj_ativos_garantias` | Bens gravados, constrições e ativos declarados livres |
+| `pdpj_historico_empresa` | Histórico judicial da empresa pelo nome — acha a RJ e situa a crise no tempo |
 | `pdpj_validar_numero` | Valida o dígito verificador e identifica o tribunal — offline |
 | `pdpj_listar_tribunais` | Os 91 tribunais cobertos e seus aliases — offline |
 | `pdpj_status` | Como o servidor está configurado (sem expor a chave) |
+
+`pdpj_dossie_recuperacao`, `pdpj_relacao_credores`, `pdpj_ativos_garantias` e
+`pdpj_historico_empresa` formam o módulo de recuperação judicial, detalhado adiante.
 
 Todas são somente leitura (`readOnlyHint`) e aceitam `response_format`:
 `markdown` (padrão, legível) ou `json` (dados completos).
@@ -84,6 +97,69 @@ A leitura do nome não depende de maiúsculas (publicações vêm ora em caixa a
 ora não): ela acumula palavras até esbarrar em pontuação, em palavra funcional
 ou no texto voltando a correr — o que evita colar "prestará contas" no fim de
 uma razão social.
+
+---
+
+## Recuperação judicial
+
+Um segundo módulo lê o que a **Lei 11.101/2005** obriga a publicar. A lógica é
+essa: a relação de credores e o resumo do pedido do devedor não são campo de
+base alguma, mas o art. 52, §1º, e o art. 7º, §2º mandam publicá-los em edital
+— e edital vai ao diário. É de lá que eles saem.
+
+### O que o módulo entrega
+
+| Pergunta | De onde vem a resposta |
+| --- | --- |
+| Em que fase está | Marcos reconhecidos nos movimentos: deferimento (art. 52), plano (art. 53), assembleia (arts. 35 a 46), concessão (art. 58), encerramento (art. 63), falência (art. 73) |
+| Quanto falta do *stay period* | 180 dias corridos do deferimento, 360 com a prorrogação registrada (art. 6º, §4º) |
+| Por que pediu RJ | Trechos do resumo do pedido no edital, classificados por causa |
+| Quem são os credores | Pares nome → valor dentro de cada classe do art. 41, lidos do edital |
+| O que está gravado | Menções a ônus e constrição no texto, classificadas pelo efeito que têm |
+
+### A distinção que o módulo insiste em manter
+
+| Situação | Submete-se ao plano? | Onde entra |
+| --- | --- | --- |
+| Alienação e cessão fiduciária, leasing, reserva de domínio | **Não** (art. 49, §3º) | Fora do concurso — mas o bem de capital essencial não pode ser retirado durante a suspensão |
+| Hipoteca, penhor, anticrese, caução | Sim | Classe II; suprimir a garantia exige o aval do credor titular (art. 50, §1º) |
+| Penhora, bloqueio, indisponibilidade | — | Constrição, não garantia; sobre bem essencial, a substituição é do juízo da recuperação (art. 6º, §7º-B) |
+
+É a diferença que mais altera o valor efetivo do ativo, e é por isso que o
+resultado nunca vem em lista única.
+
+### Acionar sem terminal
+
+Duas formas, as duas dentro do próprio Claude:
+
+**Prompts MCP** — o servidor registra três, que aparecem como comandos de barra
+no cliente (`/pdpj:dossie_recuperacao_judicial`) ou como itens do menu do
+conector:
+
+| Prompt | Para quê |
+| --- | --- |
+| `dossie_recuperacao_judicial` | O dossiê completo, com o roteiro de qual ferramenta chamar e como relatar |
+| `relacao_de_credores` | Só o passivo, por classe |
+| `ativos_livres_e_gravados` | Só o ativo, separado em livres e gravados |
+
+**Skill do projeto** — `.claude/skills/dossie-rj/` traz a habilidade `dossie-rj`,
+carregada automaticamente ao abrir este diretório no Claude Code. Ela define a
+estrutura do relatório, a ordem das seções e as regras que não se negociam
+(extração não é campo; ausência de gravame não faz bem livre; lacuna não se
+preenche com memória). O anexo `referencia-lrf.md` reúne os artigos citados.
+
+### Onde a fonte pública termina
+
+Relação de bens (art. 51, III e IV), plano (art. 53), laudo
+econômico-financeiro, balanços, atas de assembleia e relatórios mensais do
+administrador judicial são **peças dos autos**. O diário publica a existência do
+ato, não o seu conteúdo. Por isso o levantamento de ativos deste servidor não é
+um inventário patrimonial — é o conjunto de menções encontradas em texto
+público, cada uma com o trecho de origem. E a ausência de gravame na lista nunca
+torna um bem livre.
+
+História societária — fundação, sócios, capital, filiais — não está em base
+judicial nenhuma: vem da Junta Comercial e do CNPJ na Receita Federal.
 
 ---
 
@@ -205,6 +281,11 @@ pelo DJEN, e com as ressalvas da seção anterior. Além disso:
 - O DJEN cobre as comunicações a partir da adesão de cada tribunal. Processo
   antigo, em papel ou em segredo de justiça pode não ter publicação eletrônica —
   ausência de advogado no resultado não significa ausência de advogado nos autos.
+- Na recuperação judicial, credores, motivo do pedido e bens são **extraídos do
+  texto** dos editais, cujo layout varia por tribunal, por sistema e por
+  administrador judicial. A leitura devolve sempre o trecho de origem, e conta à
+  parte os valores que não puderam ser ligados a um nome. Peças dos autos —
+  relação de bens, plano, laudos, atas — nunca são publicadas em diário.
 
 ---
 
@@ -237,10 +318,12 @@ src/
     tribunais.ts    catálogo dos 91 índices e dedução pelo número
     datajud.ts      cliente HTTP, cache e erros acionáveis
     analise.ts      motor de análise: categorias, métricas, marcos, alertas
+    recuperacao.ts  Lei 11.101/2005: marcos, stay period, credores, gravames
     resolver.ts     fluxo comum: valida → descobre tribunal → consulta → analisa
     formato.ts      renderização markdown
-    demo.ts         fixture do modo demonstração
+    demo.ts         fixtures do modo demonstração (cível comum e recuperação)
   tools/            registro das ferramentas MCP
+  prompts/          prompts MCP: roteiros acionáveis como comando de barra
 test/               testes unitários e de integração ponta a ponta
 ```
 

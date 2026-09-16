@@ -10,6 +10,8 @@ import { registrarFerramentasBusca } from './tools/busca.js';
 import { registrarFerramentaComparar } from './tools/comparar.js';
 import { registrarFerramentasReferencia } from './tools/referencia.js';
 import { registrarFerramentasPessoas } from './tools/pessoas.js';
+import { registrarFerramentasRecuperacao } from './tools/recuperacao.js';
+import { registrarPrompts } from './prompts/dossie.js';
 
 /**
  * Servidor MCP da API Pública do DataJud (PDPJ/CNJ).
@@ -36,6 +38,16 @@ export function criarServidor(): McpServer {
         'pdpj_buscar_publicacoes. Advogados e partes são dado estruturado; administrador judicial,',
         'perito e demais auxiliares são extraídos do texto das publicações e exigem conferência.',
         '',
+        'Para recuperação judicial e falência há um módulo próprio, que lê o que a Lei 11.101/2005',
+        'obriga a publicar: pdpj_dossie_recuperacao (dossiê completo: fase, marcos, stay period,',
+        'fatores legais, credores e ativos), pdpj_relacao_credores (passivo pelas classes do art. 41),',
+        'pdpj_ativos_garantias (bens gravados, constrições e declarados livres) e',
+        'pdpj_historico_empresa (achar a recuperação pelo nome da empresa e situar a crise no tempo).',
+        'Credores, motivo do pedido e bens são EXTRAÍDOS DO TEXTO dos editais — não são campo de base.',
+        'A relação de bens, o plano e os laudos são peças dos autos e nunca aparecem no diário: ao',
+        'relatar ativos, jamais trate a lista como inventário patrimonial, e nunca conclua que um bem',
+        'é livre por não constar da lista de gravames.',
+        '',
         'A situação processual que este servidor reporta é inferida do texto dos movimentos, não é',
         'um campo oficial. Ao relatar resultados ao usuário, deixe claro que se trata de leitura de',
         'metadados públicos e cite a data da última atualização da base.',
@@ -48,6 +60,8 @@ export function criarServidor(): McpServer {
   registrarFerramentaComparar(server);
   registrarFerramentasReferencia(server);
   registrarFerramentasPessoas(server);
+  registrarFerramentasRecuperacao(server);
+  registrarPrompts(server);
 
   return server;
 }
