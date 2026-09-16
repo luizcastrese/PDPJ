@@ -1,4 +1,5 @@
 import type { Publicacao } from './djen.js';
+import { lerData } from './analise.js';
 import type { Movimento } from '../types.js';
 
 /**
@@ -319,8 +320,8 @@ export function calcularStay(marcos: MarcoRj[], referencia = new Date()): StayPe
 
   const prorrogado = marcos.some((m) => m.id === 'prorrogacao_stay');
   const diasTotais = prorrogado ? 360 : 180;
-  const inicio = new Date(deferimento.data);
-  if (Number.isNaN(inicio.getTime())) return null;
+  const inicio = lerData(deferimento.data);
+  if (!inicio) return null;
 
   const fim = new Date(inicio.getTime() + diasTotais * DIA_MS);
   const decorridos = Math.floor((referencia.getTime() - inicio.getTime()) / DIA_MS);
@@ -1118,8 +1119,10 @@ export function fatoresLegais(
 ): FatorLegal[] {
   const fatores: FatorLegal[] = [];
   const por = (id: string) => marcos.find((m) => m.id === id) ?? null;
-  const dias = (iso: string) =>
-    Math.floor((referencia.getTime() - new Date(iso).getTime()) / DIA_MS);
+  const dias = (iso: string) => {
+    const d = lerData(iso);
+    return d ? Math.floor((referencia.getTime() - d.getTime()) / DIA_MS) : 0;
+  };
 
   if (fase.id === 'falencia') {
     fatores.push({

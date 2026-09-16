@@ -1,4 +1,4 @@
-import { humanizarDias } from './analise.js';
+import { humanizarDias, lerData } from './analise.js';
 import { CHARACTER_LIMIT } from '../constants.js';
 import type { Analise, Movimento, ResumoProcesso, Tom } from '../types.js';
 
@@ -12,8 +12,8 @@ const SIMBOLO: Record<Tom, string> = {
 /** "2024-03-15T00:00:00Z" -> "15/03/2024". */
 export function data(iso?: string | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
+  const d = lerData(iso);
+  if (!d) return String(iso);
   return d.toISOString().slice(0, 10).split('-').reverse().join('/');
 }
 

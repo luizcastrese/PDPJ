@@ -57,6 +57,6 @@ export const config: Config = {
   baseUrl: process.env.PDPJ_BASE_URL || 'https://api-publica.datajud.cnj.jus.br',
   djenUrl: process.env.PDPJ_DJEN_URL || 'https://comunicaapi.pje.jus.br',
   cacheTtlMs: Number(process.env.PDPJ_CACHE_TTL ?? 300) * 1000,
-  timeoutMs: Number(process.env.PDPJ_TIMEOUT ?? 30000),
+  timeoutMs: Number(process.env.PDPJ_TIMEOUT ?? 90000),
   demo: process.env.PDPJ_DEMO === '1' || process.env.PDPJ_DEMO === 'true',
 };

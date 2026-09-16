@@ -13,7 +13,8 @@ import {
   lerValor,
   moeda,
 } from '../src/services/recuperacao.js';
-import { prepararMovimentos } from '../src/services/analise.js';
+import { lerData, prepararMovimentos } from '../src/services/analise.js';
+import { data } from '../src/services/formato.js';
 import {
   processoRecuperacaoDemo,
   publicacoesRecuperacaoDemo,
@@ -337,4 +338,24 @@ test('sem marcos, ainda assim sai um fator explicando o vazio', () => {
   const fatores = fatoresLegais(deduzirFase([]), [], null, null, null);
   assert.equal(fatores.length, 1);
   assert.match(fatores[0].texto, /carga incompleta/);
+});
+
+/* ------------------------- formatos reais do DataJud ---------------------- */
+
+test('lê tanto a data ISO quanto o carimbo compacto do DataJud', () => {
+  const compacta = lerData('20170816013642');
+  assert.equal(compacta?.toISOString(), '2017-08-16T01:36:42.000Z');
+
+  const soDia = lerData('20170816');
+  assert.equal(soDia?.toISOString(), '2017-08-16T00:00:00.000Z');
+
+  const iso = lerData('2017-08-16T02:02:12.000Z');
+  assert.equal(iso?.toISOString(), '2017-08-16T02:02:12.000Z');
+
+  assert.equal(lerData(null), null);
+  assert.equal(lerData('nem data nem carimbo'), null);
+});
+
+test('a data de ajuizamento compacta é formatada, e não devolvida crua', () => {
+  assert.equal(data('20170816013642'), '16/08/2017');
 });

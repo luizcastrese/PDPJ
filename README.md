@@ -265,7 +265,7 @@ opcionais.
 | `PDPJ_BASE_URL` | `https://api-publica.datajud.cnj.jus.br` | Endereço base da API do DataJud |
 | `PDPJ_DJEN_URL` | `https://comunicaapi.pje.jus.br` | Endereço base da API do DJEN (aberta, sem chave) |
 | `PDPJ_CACHE_TTL` | `300` | Cache das consultas em segundos (`0` desativa) |
-| `PDPJ_TIMEOUT` | `30000` | Tempo limite por chamada, em milissegundos |
+| `PDPJ_TIMEOUT` | `90000` | Tempo limite por chamada, em milissegundos. A API do DataJud é lenta: buscas amplas passam de 50s |
 | `PDPJ_DEMO` | desligado | `1` responde com uma fixture local, sem rede |
 | `PDPJ_AUTH_TOKEN` | — | Só no modo HTTP: exige o token em `/mcp`, por cabeçalho `Authorization: Bearer` ou no caminho `/mcp/<token>` |
 | `PORT` | `8080` | Só no modo HTTP: porta de escuta |

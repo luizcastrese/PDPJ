@@ -64,10 +64,33 @@ export function classificar(nomeMovimento: unknown): Categoria {
   return CATEGORIAS.find((c) => c.padrao.test(k)) ?? CATEGORIAS[CATEGORIAS.length - 1];
 }
 
-function paraData(valor?: string | null): Date | null {
+/**
+ * Lê uma data do DataJud.
+ *
+ * A base não é uniforme: parte dos tribunais entrega ISO 8601
+ * ("2017-08-16T02:02:12.000Z") e parte entrega o carimbo compacto do próprio
+ * sistema de origem ("20170816013642", aaaammddhhmmss). O segundo formato não
+ * é reconhecido por `new Date`, e sem este tratamento a data de ajuizamento
+ * aparecia crua no relatório.
+ */
+export function lerData(valor?: string | null): Date | null {
   if (!valor) return null;
-  const d = new Date(valor);
+  const bruto = String(valor).trim();
+  if (!bruto) return null;
+
+  const compacto = /^(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2}))?$/.exec(bruto);
+  if (compacto) {
+    const [, ano, mes, dia, hora = '00', min = '00', seg = '00'] = compacto;
+    const d = new Date(`${ano}-${mes}-${dia}T${hora}:${min}:${seg}Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(bruto);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function paraData(valor?: string | null): Date | null {
+  return lerData(valor);
 }
 
 function diasEntre(a: Date | null, b: Date | null): number | null {

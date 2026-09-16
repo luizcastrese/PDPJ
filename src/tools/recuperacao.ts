@@ -375,6 +375,18 @@ Limite estrutural: relação de bens, plano de recuperação, laudos e balanços
         RESSALVA,
       ];
 
+      if (djen.falha) {
+        // Sem este aviso, as seções alimentadas pelo DJEN sairiam vazias como
+        // se a fonte tivesse sido lida e nada houvesse — que é o oposto do que
+        // aconteceu. Vazio por indisponibilidade não é vazio por ausência.
+        l.push(
+          '',
+          '> 🔴 **O DJEN não foi consultado.** As seções de motivo do pedido, credores e ativos dependem dele e estão vazias por indisponibilidade da fonte, **não por ausência de credores, de motivo ou de bens**.',
+          `>`,
+          `> Falha: ${djen.falha}`,
+        );
+      }
+
       if (!pareceRj) {
         l.push(
           '',
@@ -419,6 +431,8 @@ Limite estrutural: relação de bens, plano de recuperação, laudos e balanços
           l.push(`- **${rotulo}** (${itens.length} menção(ões))`);
           l.push(`  - _"…${itens[0].trecho}…"_`);
         }
+      } else if (djen.falha) {
+        l.push('', '_Não avaliado: o DJEN não respondeu, e o motivo do pedido só existe no texto que ele publica._');
       } else {
         l.push(
           '',
@@ -459,6 +473,13 @@ Limite estrutural: relação de bens, plano de recuperação, laudos e balanços
       if (args.incluir_credores) {
         if (relacao) {
           l.push(...credoresMarkdown(relacao, args.max_credores_por_classe));
+        } else if (djen.falha) {
+          l.push(
+            '',
+            '## Relação de credores',
+            '',
+            '_Não levantada: o DJEN não respondeu._ A relação de credores só existe no texto do edital publicado — sem essa fonte não há de onde lê-la, e o vazio acima não diz nada sobre o passivo da devedora.',
+          );
         } else {
           l.push(
             '',
@@ -749,6 +770,12 @@ Não use quando: o pedido é o passivo — para credores, use pdpj_relacao_credo
         `# Ativos e gravames — ${formatar(digitos)}`,
         '',
         RESSALVA,
+        ...(djen.falha
+          ? [
+              '',
+              `> 🔴 **O DJEN não foi consultado** (${djen.falha}). A descrição dos bens vem do texto das publicações; sem ela, sobram apenas as constrições que aparecem no nome dos movimentos. O que falta abaixo falta por indisponibilidade da fonte, não por ausência de gravame.`,
+            ]
+          : []),
         '',
         `Base: ${djen.publicacoes.length} publicação(ões) e ${movimentos.length} movimento(s).`,
         ...ativosMarkdown(recorte, args.limit),
