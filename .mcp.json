@@ -2,7 +2,9 @@
   "mcpServers": {
     "pdpj": {
       "command": "node",
-      "args": ["./dist/src/index.js"],
+      "args": [
+        "./scripts/mcp-stdio.mjs"
+      ],
       "env": {
         "PDPJ_API_KEY": "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
       }

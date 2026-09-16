@@ -197,7 +197,29 @@ claude mcp add pdpj -- node "$(pwd)/dist/src/index.js"
 ```
 
 O repositório também traz um `.mcp.json`: ao abrir este diretório no Claude Code,
-o servidor é oferecido automaticamente (basta aprovar).
+o servidor é oferecido automaticamente (basta aprovar). Ele aponta para
+`scripts/mcp-stdio.mjs`, um lançador que instala as dependências e compila
+antes de subir o servidor — `dist/` é gerado e fica fora do git, então numa
+cópia recém-clonada não existiria nada para executar. Toda a saída de npm e de
+tsc vai para o stderr: o stdout fica reservado ao protocolo MCP.
+
+### Claude Code na web
+
+Funciona sem nenhum passo extra de instalação — o ambiente clona o repositório
+e o lançador cuida do resto. Falta só uma coisa, que é configuração do ambiente
+e não do servidor: **liberar os hosts do CNJ no egress de rede**.
+
+```
+api-publica.datajud.cnj.jus.br    DataJud — metadados e movimentos
+comunicaapi.pje.jus.br            DJEN — publicações, editais, advogados
+```
+
+Sem isso, toda consulta volta com `HTTP 403 — Host not in allowlist`, que é
+recusa do proxy do ambiente, não da API. A configuração está nas
+[network egress settings do ambiente](https://code.claude.com/docs/en/claude-code-on-the-web).
+
+Para conhecer as ferramentas enquanto o acesso não sai, `PDPJ_DEMO=1` responde
+com fixtures locais — inclusive uma recuperação judicial completa.
 
 ### Registrar no app Claude para computador
 
@@ -304,6 +326,8 @@ npm run diagnostico # verifica servidor, token e túnel do modo conector
 Estrutura:
 
 ```
+scripts/
+  mcp-stdio.mjs     lançador do modo local: instala, compila e sobe o servidor
 src/
   index.ts          entrada local: McpServer + transporte stdio
   http.ts           entrada remota: Streamable HTTP stateless, com Bearer token
