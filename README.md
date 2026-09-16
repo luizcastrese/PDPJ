@@ -221,7 +221,19 @@ recusa do proxy do ambiente, não da API. A configuração está nas
 Para conhecer as ferramentas enquanto o acesso não sai, `PDPJ_DEMO=1` responde
 com fixtures locais — inclusive uma recuperação judicial completa.
 
-### Registrar no app Claude para computador
+### Instalar no app Claude para computador
+
+O caminho mais curto é a extensão: `npm run empacotar:extensao` gera
+`out/pdpj.mcpb`, e no app basta **Configurações → Extensões → Configurações
+avançadas → Instalar extensão…** e escolher o arquivo. Um clique, sem
+hospedagem, sem URL pública e sem token — e como o app embute um Node.js, quem
+instala nem precisa ter Node na máquina.
+
+O pacote leva o servidor compilado e as dependências de produção dentro de si,
+então funciona numa máquina que não tem o repositório. É o formato para entregar
+o servidor a outra pessoa.
+
+Alternativa, para quem já tem o repositório clonado e prefere apontar para ele:
 
 ```bash
 npm run instalar:desktop
@@ -321,6 +333,7 @@ npm start          # servidor local (stdio)
 npm run start:http # servidor remoto (Streamable HTTP)
 npm run inspector  # MCP Inspector sobre o servidor compilado
 npm run diagnostico # verifica servidor, token e túnel do modo conector
+npm run empacotar:extensao # gera out/pdpj.mcpb, a extensão do app Claude
 ```
 
 Estrutura:
@@ -328,6 +341,7 @@ Estrutura:
 ```
 scripts/
   mcp-stdio.mjs     lançador do modo local: instala, compila e sobe o servidor
+  empacotar-extensao.mjs  gera o .mcpb, a extensão de um clique do app Claude
 src/
   index.ts          entrada local: McpServer + transporte stdio
   http.ts           entrada remota: Streamable HTTP stateless, com Bearer token
