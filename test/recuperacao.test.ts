@@ -359,3 +359,22 @@ test('lê tanto a data ISO quanto o carimbo compacto do DataJud', () => {
 test('a data de ajuizamento compacta é formatada, e não devolvida crua', () => {
   assert.equal(data('20170816013642'), '16/08/2017');
 });
+
+test('variável de ambiente vazia não zera o tempo limite', async () => {
+  // Um lançador que repassa "PDPJ_TIMEOUT=" sem valor faria Number('') === 0,
+  // e um AbortController com 0 ms derruba toda chamada antes de ela sair.
+  const anterior = process.env.PDPJ_TIMEOUT;
+  const anteriorCache = process.env.PDPJ_CACHE_TTL;
+  try {
+    process.env.PDPJ_TIMEOUT = '';
+    process.env.PDPJ_CACHE_TTL = 'nem número';
+    const { config } = await import(`../src/config.js?vazio=${Date.now()}`);
+    assert.equal(config.timeoutMs, 90000);
+    assert.equal(config.cacheTtlMs, 300000);
+  } finally {
+    if (anterior === undefined) delete process.env.PDPJ_TIMEOUT;
+    else process.env.PDPJ_TIMEOUT = anterior;
+    if (anteriorCache === undefined) delete process.env.PDPJ_CACHE_TTL;
+    else process.env.PDPJ_CACHE_TTL = anteriorCache;
+  }
+});

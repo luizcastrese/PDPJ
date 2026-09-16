@@ -51,12 +51,26 @@ export interface Config {
   demo: boolean;
 }
 
+/**
+ * Lê um número de variável de ambiente, caindo no padrão quando o valor não
+ * serve. O caso que importa é a variável **definida como texto vazio** — comum
+ * quando um lançador repassa `VAR=` sem valor: `Number('')` é 0, e um tempo
+ * limite de 0 aborta toda chamada antes de ela sair. `??` não protege disso,
+ * porque string vazia não é nulo.
+ */
+function numeroDoAmbiente(valor: string | undefined, padrao: number, minimo = 0): number {
+  if (valor === undefined || valor.trim() === '') return padrao;
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= minimo ? n : padrao;
+}
+
 export const config: Config = {
   apiKey: process.env.PDPJ_API_KEY || CHAVE_PUBLICA_CNJ,
   usandoChavePadrao: !process.env.PDPJ_API_KEY,
   baseUrl: process.env.PDPJ_BASE_URL || 'https://api-publica.datajud.cnj.jus.br',
   djenUrl: process.env.PDPJ_DJEN_URL || 'https://comunicaapi.pje.jus.br',
-  cacheTtlMs: Number(process.env.PDPJ_CACHE_TTL ?? 300) * 1000,
-  timeoutMs: Number(process.env.PDPJ_TIMEOUT ?? 90000),
+  // O cache aceita 0, que desliga; o tempo limite não, porque 0 anula tudo.
+  cacheTtlMs: numeroDoAmbiente(process.env.PDPJ_CACHE_TTL, 300) * 1000,
+  timeoutMs: numeroDoAmbiente(process.env.PDPJ_TIMEOUT, 90000, 1),
   demo: process.env.PDPJ_DEMO === '1' || process.env.PDPJ_DEMO === 'true',
 };
