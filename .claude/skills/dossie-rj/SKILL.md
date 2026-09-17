@@ -21,7 +21,8 @@ processo.
 | Ferramenta | Papel no dossiê |
 | --- | --- |
 | `pdpj_dossie_recuperacao` | Chamada principal: fase, marcos, stay period, fatores legais, credores e ativos de uma vez |
-| `pdpj_historico_empresa` | Acha a RJ pelo nome da empresa; situa a crise no tempo pelas execuções anteriores |
+| `pdpj_localizar_processos` | Acha o número CNJ pelo nome do grupo econômico, reunindo as empresas coligadas |
+| `pdpj_historico_empresa` | Situa a crise no tempo pelas execuções anteriores ao pedido |
 | `pdpj_relacao_credores` | Passivo completo, por classe do art. 41, com filtros e paginação |
 | `pdpj_ativos_garantias` | Detalhe dos gravames, constrições e bens declarados livres |
 | `pdpj_identificar_envolvidos` | Administrador judicial, advogados, partes |
@@ -29,10 +30,13 @@ processo.
 
 ## Roteiro
 
-1. **Sem número de processo**: comece por `pdpj_historico_empresa` com a
-   razão social. Ele devolve os processos da empresa e destaca os de
-   insolvência. Confirme com o usuário qual é a RJ antes de seguir, se houver
-   mais de uma.
+1. **Sem número de processo**: comece por `pdpj_localizar_processos` com o
+   nome como o usuário o deu — inclusive "Grupo X". Ele reduz ao núcleo
+   distintivo, busca as variantes, reagrupa por processo e confirma os
+   melhores candidatos no DataJud. Leia os sinais antes de escolher: várias
+   razões sociais no mesmo processo indicam consolidação (arts. 69-G a 69-J);
+   candidato sem nenhuma parte carregando o núcleo é provável homônimo.
+   Com mais de um candidato plausível, confirme com o usuário antes de seguir.
 2. **Com número**: chame `pdpj_dossie_recuperacao`. Ele é a espinha dorsal —
    as demais chamadas só complementam.
 3. **Aprofunde apenas o que o pedido pediu.** Se o usuário quer o passivo,
@@ -42,8 +46,10 @@ processo.
    antes de concluir que a relação não existe. O edital do art. 52, §1º sai
    logo depois do deferimento e costuma estar entre as publicações mais
    antigas do processo.
-5. **Se a empresa tiver grupo econômico** (consolidação processual), o dossiê
-   cobre apenas o número consultado. Diga isso, e ofereça rodar os demais.
+5. **Se a empresa tiver grupo econômico**, o dossiê cobre apenas o número
+   consultado. Quando `pdpj_localizar_processos` devolveu mais de uma empresa
+   do mesmo núcleo, diga isso e ofereça rodar os demais — consolidação
+   processual reúne as devedoras num processo só, mas nem todo grupo consolida.
 
 ## Estrutura do relatório
 

@@ -19,6 +19,12 @@ import {
   processoRecuperacaoDemo,
   publicacoesRecuperacaoDemo,
 } from '../src/services/demo.js';
+import {
+  agrupar,
+  empresasDoGrupo,
+  gerarVariantes,
+  nucleo,
+} from '../src/services/localizador.js';
 import type { Publicacao } from '../src/services/djen.js';
 import type { Movimento } from '../src/types.js';
 
@@ -377,4 +383,138 @@ test('variável de ambiente vazia não zera o tempo limite', async () => {
     if (anteriorCache === undefined) delete process.env.PDPJ_CACHE_TTL;
     else process.env.PDPJ_CACHE_TTL = anteriorCache;
   }
+});
+
+/* ------------------------ localização pelo nome --------------------------- */
+
+test('reduz a razão social ao núcleo distintivo', () => {
+  assert.equal(nucleo('Metalúrgica Andrade Indústria e Comércio Ltda'), 'Metalúrgica Andrade');
+  assert.equal(nucleo('Grupo Andrade'), 'Andrade');
+  assert.equal(nucleo('Andrade Participações S.A.'), 'Andrade');
+  assert.equal(nucleo('Usinagem Precisa EPP'), 'Usinagem Precisa');
+  assert.equal(nucleo('Andrade'), 'Andrade', 'nome já reduzido não é esvaziado');
+});
+
+test('gera poucas variantes, e nenhuma curta demais', () => {
+  const v = gerarVariantes('Grupo Andrade Participações Ltda').map((x) => x.texto);
+  assert.ok(v.includes('Grupo Andrade Participações Ltda'));
+  assert.ok(v.includes('Andrade Participações Ltda'));
+  assert.ok(v.includes('Andrade'));
+  assert.ok(v.length <= 3, 'a busca não explode em combinações');
+
+  const curto = gerarVariantes('Grupo Oi').map((x) => x.texto);
+  assert.ok(!curto.includes('Oi'), 'núcleo curto demais viraria busca genérica');
+});
+
+test('agrupa por processo e reconhece a assinatura da consolidação', () => {
+  const pub = (numero: string, classe: string, orgao: string, nomes: string[]): Publicacao => ({
+    id: `${numero}-${nomes[0]}`,
+    numeroProcesso: numero,
+    dataDisponibilizacao: '2024-05-10',
+    tribunal: 'TJSP',
+    orgao,
+    tipoComunicacao: 'Intimação',
+    classe,
+    meio: 'DJEN',
+    link: null,
+    texto: '',
+    advogados: [],
+    destinatarios: nomes.map((n) => ({ nome: n, polo: 'ATIVO' })),
+  });
+
+  const candidatos = agrupar(
+    [
+      {
+        variante: 'Andrade',
+        publicacoes: [
+          pub('10055447420228260100', 'Recuperação Judicial', '2ª Vara de Falências e Recuperações Judiciais', [
+            'Metalúrgica Andrade Indústria e Comércio Ltda',
+          ]),
+          pub('10055447420228260100', 'Recuperação Judicial', '2ª Vara de Falências e Recuperações Judiciais', [
+            'Andrade Participações S.A.',
+          ]),
+          pub('20001234520238260200', 'Execução Fiscal', '1ª Vara de Execuções Fiscais', [
+            'Metalúrgica Andrade Indústria e Comércio Ltda',
+          ]),
+        ],
+      },
+    ],
+    'Grupo Andrade',
+    false,
+  );
+
+  assert.equal(candidatos.length, 2);
+
+  const rj = candidatos[0];
+  assert.equal(rj.numero, '10055447420228260100', 'a recuperação vem na frente da execução fiscal');
+  assert.equal(rj.nomes.length, 2, 'as duas empresas do grupo foram reunidas no mesmo processo');
+  assert.ok(rj.sinais.some((s) => /consolida/.test(s)));
+  assert.ok(rj.sinais.some((s) => /vara especializada/.test(s)));
+
+  assert.deepEqual(empresasDoGrupo(candidatos), [
+    'Andrade Participações S.A.',
+    'Metalúrgica Andrade Indústria e Comércio Ltda',
+  ]);
+});
+
+test('o filtro de insolvência descarta o que não é recuperação nem falência', () => {
+  const pub = (numero: string, classe: string): Publicacao => ({
+    id: numero,
+    numeroProcesso: numero,
+    dataDisponibilizacao: '2024-05-10',
+    tribunal: 'TJSP',
+    orgao: 'Vara Cível',
+    tipoComunicacao: 'Intimação',
+    classe,
+    meio: 'DJEN',
+    link: null,
+    texto: '',
+    advogados: [],
+    destinatarios: [{ nome: 'Metalúrgica Andrade Ltda', polo: 'ATIVO' }],
+  });
+
+  const todos = agrupar(
+    [{ variante: 'Andrade', publicacoes: [pub('1', 'Recuperação Judicial'), pub('2', 'Execução Fiscal')] }],
+    'Andrade',
+    false,
+  );
+  assert.equal(todos.length, 2);
+
+  const so = agrupar(
+    [{ variante: 'Andrade', publicacoes: [pub('1', 'Recuperação Judicial'), pub('2', 'Execução Fiscal')] }],
+    'Andrade',
+    true,
+  );
+  assert.equal(so.length, 1);
+  assert.equal(so[0].classe, 'Recuperação Judicial');
+});
+
+test('parte que não carrega o núcleo buscado é sinalizada como possível homônimo', () => {
+  const candidatos = agrupar(
+    [
+      {
+        variante: 'Andrade',
+        publicacoes: [
+          {
+            id: 'x',
+            numeroProcesso: '30001234520238260300',
+            dataDisponibilizacao: '2024-05-10',
+            tribunal: 'TJSP',
+            orgao: 'Vara Cível',
+            tipoComunicacao: 'Intimação',
+            classe: 'Procedimento Comum',
+            meio: 'DJEN',
+            link: null,
+            texto: '',
+            advogados: [],
+            destinatarios: [{ nome: 'Construtora Silveira Ltda', polo: 'PASSIVO' }],
+          },
+        ],
+      },
+    ],
+    'Andrade',
+    false,
+  );
+  assert.equal(candidatos[0].nomes.length, 0);
+  assert.ok(candidatos[0].sinais.some((s) => /homônimo/.test(s)));
 });

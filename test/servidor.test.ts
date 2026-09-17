@@ -51,6 +51,7 @@ test('expõe todas as ferramentas esperadas', async () => {
     'pdpj_identificar_envolvidos',
     'pdpj_listar_movimentos',
     'pdpj_listar_tribunais',
+    'pdpj_localizar_processos',
     'pdpj_relacao_credores',
     'pdpj_status',
     'pdpj_validar_numero',

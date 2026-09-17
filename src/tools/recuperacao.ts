@@ -5,6 +5,7 @@ import {
   AtivosGarantiasInput,
   DossieRecuperacaoInput,
   HistoricoEmpresaInput,
+  LocalizarProcessosInput,
   RelacaoCredoresInput,
 } from '../schemas/index.js';
 import { buscarPublicacoes, type Publicacao } from '../services/djen.js';
@@ -28,6 +29,13 @@ import {
   type MarcoRj,
   type RelacaoCredores,
 } from '../services/recuperacao.js';
+import {
+  agrupar,
+  empresasDoGrupo,
+  gerarVariantes,
+  nucleo,
+  type Candidato,
+} from '../services/localizador.js';
 import { comTratamento, responder, SOMENTE_LEITURA } from './comum.js';
 import { prepararNumero } from './pessoas.js';
 import type { Movimento } from '../types.js';
@@ -941,6 +949,219 @@ Não use quando: já se tem o número do processo — vá direto a pdpj_dossie_r
         '---',
         '',
         '**História societária não está aqui.** Fundação, sócios, capital social, filiais e situação cadastral vêm da Junta Comercial do estado e do CNPJ na Receita Federal. O que este levantamento mostra é a história *judicial* da empresa — o que foi a juízo e virou publicação eletrônica.',
+      );
+
+      return responder(args.response_format, l.join('\n'), dados);
+    }),
+  );
+
+  /* ------------------------ pdpj_localizar_processos ---------------------- */
+
+  server.registerTool(
+    'pdpj_localizar_processos',
+    {
+      title: 'Localizar processos pelo nome do grupo',
+      description: `Descobre o número CNJ a partir do **nome do grupo econômico ou da empresa**, quando você não tem o número — que é o caso mais comum no começo de uma análise.
+
+Por que isso não é uma busca simples: nenhuma das duas bases públicas indexa CNPJ. O DataJud não tem partes, e o DJEN registra o nome como o tribunal o escreveu, que raramente é o nome pelo qual o grupo é conhecido. "Grupo Andrade" não existe nos autos; lá está "Metalúrgica Andrade Indústria e Comércio Ltda", e a coligada aparece como "Andrade Participações S.A.".
+
+O que a ferramenta faz:
+  1. Reduz o nome ao **núcleo distintivo**, tirando o prefixo ("Grupo") e a forma jurídica (Ltda, S.A., Participações, Indústria e Comércio).
+  2. Busca cada variante no DJEN — poucas e deliberadas, porque o campo do DJEN casa por conteúdo.
+  3. **Reagrupa por processo**, que é onde o grupo aparece: várias razões sociais do mesmo núcleo no mesmo processo é a assinatura da consolidação processual (arts. 69-G a 69-J da Lei 11.101/2005).
+  4. Ordena por evidência: classe de insolvência, vara especializada, número de empresas do grupo no polo, volume de publicações.
+  5. Confirma os mais prováveis no **DataJud**, trazendo a classe oficial, o órgão julgador e a data de ajuizamento.
+
+Args:
+  - nome (string): nome do grupo, razão social ou nome de fantasia.
+  - tribunal (string, opcional): sigla para restringir; sem ela a busca é nacional.
+  - somente_insolvencia (boolean): mantém apenas recuperação e falência (padrão: true). Desligue para ver toda a carteira.
+  - confirmar_no_datajud (boolean) + max_confirmacoes (number): confirmação oficial dos melhores candidatos (padrão: true, 3).
+  - de / ate (string, opcional): recorte de período. limit, response_format.
+
+Retorna: candidatos ordenados, cada um com o número CNJ, a classe, o juízo, **as razões sociais encontradas no polo**, quais variantes do nome o acharam, e os sinais que sustentam a posição no ranking. Mais a lista consolidada de empresas do grupo identificadas.
+
+Use quando: "acha a recuperação do Grupo X", "qual o número do processo dessa empresa", "esse grupo tem RJ?".
+Não use quando: já se tem o número — vá direto a pdpj_dossie_recuperacao. Para o panorama da carteira de uma única empresa, pdpj_historico_empresa responde melhor.
+
+**A pontuação é ordenação, não probabilidade.** Homônimo existe, e razão social parecida também: confira as razões sociais devolvidas antes de tratar um candidato como certo. E a busca só enxerga quem tem publicação eletrônica no DJEN — processo antigo, em papel ou em segredo de justiça não aparece.`,
+      inputSchema: LocalizarProcessosInput,
+      outputSchema: z.looseObject({
+        nome_buscado: z.string(),
+        candidatos: z.array(z.unknown()),
+        empresas_do_grupo: z.array(z.string()),
+      }),
+      annotations: SOMENTE_LEITURA,
+    },
+    comTratamento(async (args) => {
+      const variantes = gerarVariantes(args.nome);
+
+      const buscas = await Promise.all(
+        variantes.map(async (v) => {
+          try {
+            const r = await buscarPublicacoes({
+              nomeParte: v.texto,
+              tribunal: args.tribunal,
+              de: args.de,
+              ate: args.ate,
+              pagina: 1,
+              itensPorPagina: args.max_publicacoes_por_variante,
+            });
+            return { variante: v.texto, publicacoes: r.publicacoes, total: r.total, falha: null };
+          } catch (erro) {
+            return {
+              variante: v.texto,
+              publicacoes: [],
+              total: 0,
+              falha: erro instanceof Error ? erro.message : String(erro),
+            };
+          }
+        }),
+      );
+
+      const falhas = buscas.filter((b) => b.falha).map((b) => b.falha as string);
+      if (falhas.length === buscas.length) {
+        throw new ErroPdpj(`Não foi possível consultar o DJEN: ${falhas[0]}`, [
+          'A busca por nome só existe no DJEN — o DataJud não indexa partes.',
+          'Se este ambiente está fora do Brasil, o DJEN recusa a conexão por país.',
+        ]);
+      }
+
+      const candidatos = agrupar(buscas, args.nome, args.somente_insolvencia).slice(0, args.limit);
+      const empresas = empresasDoGrupo(candidatos);
+
+      // Confirmação oficial: o DJEN diz o que foi publicado, o DataJud diz o
+      // que o tribunal registrou. Divergência entre os dois é informação.
+      type Confirmacao = {
+        classe: string | null;
+        orgao: string | null;
+        ajuizamento: string | null;
+        movimentos: number;
+        atualizacao: string | null;
+      };
+      const confirmacoes = new Map<string, Confirmacao | { erro: string }>();
+
+      if (args.confirmar_no_datajud && candidatos.length) {
+        const alvos = candidatos.slice(0, args.max_confirmacoes);
+        await Promise.all(
+          alvos.map(async (c) => {
+            try {
+              const r = await resolverProcesso(c.numero);
+              const i = r.instancias[0];
+              confirmacoes.set(c.numero, {
+                classe: i.processo.classe?.nome ?? null,
+                orgao: i.processo.orgaoJulgador?.nome ?? null,
+                ajuizamento: i.processo.dataAjuizamento,
+                movimentos: i.metricas.totalMovimentos,
+                atualizacao: i.processo.dataUltimaAtualizacao,
+              });
+            } catch (erro) {
+              confirmacoes.set(c.numero, {
+                erro: erro instanceof Error ? erro.message : String(erro),
+              });
+            }
+          }),
+        );
+      }
+
+      const comNumero = (c: Candidato) => ({
+        numero: formatar(c.numero),
+        tribunal: c.tribunal,
+        classe: c.classe,
+        orgao: c.orgao,
+        empresas_no_polo: c.nomes,
+        encontrado_por: c.variantes,
+        publicacoes: c.publicacoes,
+        primeira_publicacao: c.primeira,
+        ultima_publicacao: c.ultima,
+        pontuacao: c.pontuacao,
+        sinais: c.sinais,
+        confirmacao: confirmacoes.get(c.numero) ?? null,
+      });
+
+      const dados = {
+        nome_buscado: args.nome,
+        nucleo: nucleo(args.nome),
+        variantes_buscadas: variantes,
+        somente_insolvencia: args.somente_insolvencia,
+        total_candidatos: candidatos.length,
+        candidatos: candidatos.map(comNumero),
+        empresas_do_grupo: empresas,
+        ...(falhas.length ? { falhas_parciais: falhas } : {}),
+      };
+
+      /* ------------------------------ markdown ---------------------------- */
+
+      const l = [
+        `# Processos de "${args.nome}"`,
+        '',
+        `Núcleo buscado: **${nucleo(args.nome)}**. Variantes consultadas: ${variantes.map((v) => `"${v.texto}" _(${v.motivo})_`).join(', ')}.`,
+      ];
+
+      if (falhas.length) {
+        l.push('', `> ⚠️ ${falhas.length} de ${buscas.length} busca(s) falharam: ${falhas[0]}`);
+      }
+
+      if (!candidatos.length) {
+        l.push(
+          '',
+          '_Nenhum processo encontrado._',
+          '',
+          args.somente_insolvencia
+            ? 'A busca está restrita a recuperação e falência. Repita com `somente_insolvencia=false` para ver todos os processos do nome.'
+            : 'Tente outra grafia da razão social, ou remova o filtro de tribunal.',
+          '',
+          'A busca enxerga apenas quem tem publicação eletrônica no DJEN: processo antigo, em papel ou em segredo de justiça não aparece.',
+        );
+        return responder(args.response_format, l.join('\n'), dados);
+      }
+
+      if (empresas.length > 1) {
+        l.push(
+          '',
+          `## Empresas do grupo identificadas (${empresas.length})`,
+          '',
+          ...empresas.map((e) => `- ${e}`),
+        );
+      }
+
+      l.push('', `## Candidatos (${candidatos.length})`, '');
+
+      candidatos.forEach((c, i) => {
+        l.push(`### ${i + 1}. ${formatar(c.numero)}`);
+        l.push('');
+        l.push(`- **Classe**: ${c.classe ?? '—'}`);
+        l.push(`- **Juízo**: ${c.orgao ?? '—'}${c.tribunal ? ` (${c.tribunal})` : ''}`);
+        if (c.nomes.length) {
+          l.push(`- **No polo**: ${c.nomes.join('; ')}`);
+        }
+        l.push(
+          `- **Publicações**: ${c.publicacoes}, de ${data(c.primeira)} a ${data(c.ultima)}`,
+        );
+        l.push(`- **Encontrado por**: ${c.variantes.map((v) => `"${v}"`).join(', ')}`);
+
+        const conf = confirmacoes.get(c.numero);
+        if (conf && 'erro' in conf) {
+          l.push(`- **DataJud**: não confirmado — ${conf.erro}`);
+        } else if (conf) {
+          l.push(
+            `- **Confirmado no DataJud**: ${conf.classe ?? '—'}, ${conf.orgao ?? '—'}, ajuizado em ${data(conf.ajuizamento)}, ${conf.movimentos} movimento(s), base atualizada em ${data(conf.atualizacao)}`,
+          );
+        }
+
+        if (c.sinais.length) {
+          l.push('', '  Sinais:');
+          l.push(...c.sinais.map((s) => `  - ${s}`));
+        }
+        l.push('');
+      });
+
+      l.push(
+        '---',
+        '',
+        '**A ordem acima é ordenação por evidência, não probabilidade.** Confira as razões sociais no polo antes de tratar um candidato como certo: homônimo e razão social parecida são comuns, e a busca por nome não tem CNPJ para desempatar — nenhuma das duas bases públicas o indexa.',
+        '',
+        'Com o número escolhido, use `pdpj_dossie_recuperacao` para o dossiê completo.',
       );
 
       return responder(args.response_format, l.join('\n'), dados);

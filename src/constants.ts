@@ -11,4 +11,4 @@ export const MAX_LIMIT = 100;
 export const DEFAULT_MOVIMENTOS = 30;
 
 export const SERVER_NAME = 'pdpj-mcp-server';
-export const SERVER_VERSION = '1.1.0';
+export const SERVER_VERSION = '1.2.0';

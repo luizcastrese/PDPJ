@@ -49,13 +49,15 @@ você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
 | `pdpj_dossie_recuperacao` | Dossiê de uma recuperação judicial: fase, marcos da LRF, stay period, fatores legais, credores e ativos |
 | `pdpj_relacao_credores` | Relação de credores lida do edital, separada pelas classes do art. 41 |
 | `pdpj_ativos_garantias` | Bens gravados, constrições e ativos declarados livres |
-| `pdpj_historico_empresa` | Histórico judicial da empresa pelo nome — acha a RJ e situa a crise no tempo |
+| `pdpj_localizar_processos` | Acha o número CNJ pelo nome do grupo econômico, reunindo as coligadas |
+| `pdpj_historico_empresa` | Histórico judicial da empresa pelo nome — situa a crise no tempo |
 | `pdpj_validar_numero` | Valida o dígito verificador e identifica o tribunal — offline |
 | `pdpj_listar_tribunais` | Os 91 tribunais cobertos e seus aliases — offline |
 | `pdpj_status` | Como o servidor está configurado (sem expor a chave) |
 
-`pdpj_dossie_recuperacao`, `pdpj_relacao_credores`, `pdpj_ativos_garantias` e
-`pdpj_historico_empresa` formam o módulo de recuperação judicial, detalhado adiante.
+`pdpj_dossie_recuperacao`, `pdpj_relacao_credores`, `pdpj_ativos_garantias`,
+`pdpj_localizar_processos` e `pdpj_historico_empresa` formam o módulo de
+recuperação judicial, detalhado adiante.
 
 Todas são somente leitura (`readOnlyHint`) e aceitam `response_format`:
 `markdown` (padrão, legível) ou `json` (dados completos).
@@ -116,6 +118,23 @@ base alguma, mas o art. 52, §1º, e o art. 7º, §2º mandam publicá-los em ed
 | Por que pediu RJ | Trechos do resumo do pedido no edital, classificados por causa |
 | Quem são os credores | Pares nome → valor dentro de cada classe do art. 41, lidos do edital |
 | O que está gravado | Menções a ônus e constrição no texto, classificadas pelo efeito que têm |
+| Qual é o número, sabendo só o nome | Núcleo distintivo do nome → busca no DJEN → reagrupamento por processo → confirmação no DataJud |
+
+### Achar o processo sabendo só o nome do grupo
+
+Nenhuma das duas bases indexa CNPJ. O DataJud não tem partes; o DJEN tem o nome
+como o tribunal o escreveu, que raramente é o nome pelo qual o grupo é
+conhecido. "Grupo Andrade" não existe nos autos — lá está "Metalúrgica Andrade
+Indústria e Comércio Ltda", e a coligada aparece como "Andrade Participações
+S.A.".
+
+`pdpj_localizar_processos` reduz o nome ao núcleo distintivo, busca as poucas
+variantes que valem a pena, e **reagrupa por processo** — que é onde o grupo
+aparece. Várias razões sociais do mesmo núcleo num só processo é a assinatura
+da consolidação processual (arts. 69-G a 69-J); o mesmo núcleo espalhado por
+processos diferentes pode ser grupo com pedidos separados, ou homônimo. A
+ferramenta não decide: mostra a evidência, ordena por ela, e confirma os
+melhores candidatos no DataJud.
 
 ### A distinção que o módulo insiste em manter
 
@@ -357,6 +376,7 @@ src/
     datajud.ts      cliente HTTP, cache e erros acionáveis
     analise.ts      motor de análise: categorias, métricas, marcos, alertas
     recuperacao.ts  Lei 11.101/2005: marcos, stay period, credores, gravames
+    localizador.ts  do nome do grupo ao número CNJ: núcleo, variantes, agrupamento
     resolver.ts     fluxo comum: valida → descobre tribunal → consulta → analisa
     formato.ts      renderização markdown
     demo.ts         fixtures do modo demonstração (cível comum e recuperação)

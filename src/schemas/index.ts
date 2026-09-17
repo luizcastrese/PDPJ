@@ -368,3 +368,45 @@ export const HistoricoEmpresaInput = {
     .describe('Quantas publicações varrer para montar o histórico.'),
   response_format: FormatoResposta,
 };
+
+export const LocalizarProcessosInput = {
+  nome: z
+    .string()
+    .min(3)
+    .describe(
+      'Nome do grupo econômico, razão social ou nome de fantasia. Aceita a forma como o grupo é conhecido ("Grupo Andrade"): o prefixo e a forma jurídica são removidos para chegar ao núcleo distintivo.',
+    ),
+  tribunal: AliasTribunal.optional().describe(
+    'Sigla para restringir a busca. Sem ela, a busca é nacional.',
+  ),
+  somente_insolvencia: z
+    .boolean()
+    .default(true)
+    .describe(
+      'Mantém apenas processos de recuperação judicial, extrajudicial ou falência. Desligue para ver toda a carteira do grupo.',
+    ),
+  confirmar_no_datajud: z
+    .boolean()
+    .default(true)
+    .describe(
+      'Confirma os candidatos mais prováveis no DataJud, trazendo a classe oficial, o órgão julgador e a data de ajuizamento. Custa uma consulta por candidato e a API do CNJ é lenta.',
+    ),
+  max_confirmacoes: z
+    .number()
+    .int()
+    .min(1)
+    .max(5)
+    .default(3)
+    .describe('Quantos candidatos confirmar no DataJud (as consultas são feitas em paralelo).'),
+  de: DataIso.optional().describe('Data inicial de disponibilização (AAAA-MM-DD).'),
+  ate: DataIso.optional().describe('Data final de disponibilização (AAAA-MM-DD).'),
+  max_publicacoes_por_variante: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(100)
+    .describe('Quantas publicações varrer por variante do nome.'),
+  limit: Limit,
+  response_format: FormatoResposta,
+};
