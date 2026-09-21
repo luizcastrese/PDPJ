@@ -1,6 +1,6 @@
 ---
 name: slides-rj
-description: Transforma o levantamento do MCP pdpj em uma apresentação padronizada de recuperação judicial, publicada como Artifact — capa, retrato do caso, motivo do pedido, linha do tempo da Lei 11.101/2005, passivo por classe do art. 41, ativos separados entre gravados e livres, e o slide obrigatório de cobertura e limites. Use quando o pedido for slides, deck, apresentação, "monta uns slides", "prepara para o comitê", "leva para a reunião" sobre uma recuperação judicial, falência ou empresa em crise — ou quando o usuário pedir o dossiê já em formato de apresentação.
+description: Monta a triagem de uma recuperação judicial como apresentação padronizada, publicada em Artifact — passivo por classe do art. 41 a partir do QGC ou da relação inicial de credores, patrimônio bem a bem com ônus e gravames, estimativa das áreas dadas em garantia por preço de referência FNP, e a cobertura resultante (garantia estimada contra crédito garantido, e ativo livre contra passivo quirografário). Complementa com fase, marcos da Lei 11.101/2005 e dados do processo via MCP pdpj. Use quando o pedido for slides, deck, apresentação, triagem, screening, "prepara para o comitê", "leva para a reunião", ou quando houver QGC, relação de credores, planilha de patrimônio ou de garantias para analisar.
 ---
 
 # Slides de recuperação judicial
@@ -9,10 +9,23 @@ Converte o que as ferramentas `pdpj_*` levantaram em um deck sempre com a
 mesma espinha dorsal, para que dois casos diferentes possam ser comparados
 slide a slide — e para que quem recebe saiba onde procurar cada coisa.
 
-## Antes de desenhar, levante
+## As entradas mandam
 
-Slides não são a fonte: são a apresentação dela. Rode o levantamento primeiro,
-seguindo a skill **`dossie-rj`** se ela estiver disponível.
+O eixo do deck são as planilhas que o usuário fornece — QGC ou relação inicial
+de credores, patrimônio do grupo item a item, e a referência de preço de terra
+FNP. Delas saem o passivo, o patrimônio e a estimativa de garantias. O contrato
+de cada uma, o modelo de estimativa e o cálculo de cobertura estão em
+[avaliacao.md](avaliacao.md) — **leia antes de calcular qualquer coisa**.
+
+Falta uma das três? Monte o deck com o que há e diga, no slide, o que não pôde
+ser calculado por falta de qual entrada. Não substitua planilha ausente por
+extração de edital sem avisar: são graus de confiança diferentes.
+
+## O MCP complementa
+
+O `pdpj` responde o que a planilha não tem — número, juízo, classe, fase,
+marcos da Lei 11.101/2005, stay period, administrador judicial. Rode o
+levantamento seguindo a skill **`dossie-rj`** se ela estiver disponível.
 
 1. Sem número: `pdpj_localizar_processos` com o nome do grupo.
 2. `pdpj_dossie_recuperacao` — é a espinha dorsal do deck inteiro.
@@ -20,9 +33,10 @@ seguindo a skill **`dossie-rj`** se ela estiver disponível.
 4. `pdpj_ativos_garantias`, se o ativo for o foco.
 5. `pdpj_historico_empresa`, para o slide de história judicial.
 
-Se as ferramentas `pdpj_*` não existirem na sessão, **pare e diga isso**. Não
-monte um deck com conhecimento geral sobre a empresa: um slide bonito com
-número inventado é pior que slide nenhum, porque circula sem você junto.
+Se as ferramentas `pdpj_*` não existirem na sessão, siga com as planilhas e
+diga que os slides de processo ficaram sem fonte. Nunca preencha nenhum dos
+dois lados com conhecimento geral sobre a empresa: um slide bonito com número
+inventado é pior que slide nenhum, porque circula sem você junto.
 
 ## Depois, desenhe
 
@@ -40,9 +54,13 @@ identifica o caso — "Metalúrgica Andrade · Recuperação Judicial" —, nunc
 
 Valem mais aqui do que no relatório em prosa, porque o deck circula sozinho:
 
-- **Nenhum número inventado.** Valor que não foi lido é `—`, não zero e não
-  estimativa. Soma parcial nunca é apresentada como passivo total: o rótulo diz
-  "soma do que foi lido", e o número de valores não atribuídos aparece junto.
+- **Nenhum número inventado.** Valor que não foi lido é `—`, não zero. Soma
+  parcial nunca é apresentada como total: o rótulo diz o que ela soma, e o que
+  ficou de fora aparece contado ao lado.
+- **Estimativa nunca se disfarça de avaliação.** O valor das áreas é área
+  declarada vezes preço regional de referência, e o slide diz isso com essas
+  palavras, junto da data da referência FNP e de quantos itens ficaram sem
+  preço aplicável.
 - **Dado e extração ficam visualmente distintos.** Classe, datas e movimentos
   vêm de campo; credores, motivo e bens vêm de texto de edital. O deck marca a
   diferença — a legenda está em `estrutura.md`.

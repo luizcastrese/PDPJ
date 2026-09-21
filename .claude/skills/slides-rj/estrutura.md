@@ -4,11 +4,10 @@ O que fixa a padronização: a sequência dos slides, o papel de cada um e os
 tokens visuais. Dois casos diferentes viram dois decks comparáveis slide a
 slide — é isso que permite pôr dois credores lado a lado numa mesa.
 
-> **Pendente.** Os slides 7 a 9 dependem do esquema da planilha FNP (QGC ou
-> relação inicial de credores, patrimônio do grupo com ônus e gravames, valor
-> das garantias). Enquanto o esquema não estiver definido, monte-os a partir do
-> que `pdpj_relacao_credores` e `pdpj_ativos_garantias` devolverem, e deixe
-> explícito no slide que a fonte é extração de edital, não a planilha.
+Os slides 7 a 10 saem das planilhas fornecidas pelo usuário, pelo contrato de
+[avaliacao.md](avaliacao.md). Sem planilha, monte-os do que
+`pdpj_relacao_credores` e `pdpj_ativos_garantias` devolverem e marque a
+procedência como extração de edital — grau de confiança menor, declarado.
 
 ## Sequência
 
@@ -20,14 +19,20 @@ slide — é isso que permite pôr dois credores lado a lado numa mesa.
 | 4 | Motivo do pedido | Causas agrupadas + um trecho citado do edital | extração |
 | 5 | Linha do tempo | Marcos com o dispositivo de cada um | campo |
 | 6 | Fatores legais | Um cartão por fator, na cor do seu tom | derivado |
-| 7 | Passivo por classe | Tabela por classe do art. 41 + composição | planilha / extração |
-| 8 | Maiores credores | Ordenados por valor, com classe | planilha / extração |
-| 9 | Ativos | Fora do concurso (art. 49, §3º) · Classe II · Constrições · Livres | planilha / extração |
-| 10 | Cobertura e limites | **Obrigatório.** O que foi consultado, em que período, e o que ficou fora por construção | — |
-| 11 | Fontes | DataJud com a data da carga, DJEN, data de geração | — |
+| 7 | Passivo por classe | Tabela por classe do art. 41 + composição; qual relação foi usada | planilha |
+| 8 | Maiores credores | Ordenados por valor, com classe e garantia vinculada | planilha |
+| 9 | Patrimônio | Bem a bem: tipo, área, situação, gravame, credor titular | planilha |
+| 10 | Garantias e cobertura | Estimativa por área × preço FNP, nível de confiança por item, cobertura da Classe II e ativo livre estimado | calculado |
+| 11 | Cobertura e limites | **Obrigatório.** O que entrou, o que ficou sem referência, e o que esta triagem não verifica | — |
+| 12 | Fontes | Relação de credores usada, data da referência FNP, DataJud com a data da carga, DJEN, data de geração | — |
 
-O slide 10 é slide inteiro, nunca rodapé. Quem recebe o deck não esteve na
-conversa que o produziu.
+O slide 11 é slide inteiro, nunca rodapé. Quem recebe o deck não esteve na
+conversa que o produziu — e uma estimativa por preço regional circula com
+aparência de avaliação se ninguém disser o contrário na mesma tela.
+
+O slide 10 é o que a mesa procura: cobertura da Classe II, quanto está fora do
+concurso pelo art. 49, §3º, e o ativo livre estimado contra o passivo
+quirografário. Apresente a última razão como faixa, nunca como número cravado.
 
 ## Legenda de procedência
 
