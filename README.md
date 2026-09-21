@@ -100,6 +100,9 @@ ora não): ela acumula palavras até esbarrar em pontuação, em palavra funcion
 ou no texto voltando a correr — o que evita colar "prestará contas" no fim de
 uma razão social.
 
+Um documento de escopo — fontes, ferramentas, maturidade por área, o que fica
+de fora e em que condições o servidor opera — está em [ESCOPO.md](ESCOPO.md).
+
 ---
 
 ## Recuperação judicial
