@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { endpointBusca, buscarTribunal } from './tribunais.js';
-import { processoDemo } from './demo.js';
+import { processoDemo, processoRecuperacaoDemo, NUMERO_RJ_DEMO } from './demo.js';
 import type { ProcessoBruto, RespostaConsulta } from '../types.js';
 
 /** Erro de negócio/integração com mensagem já pronta para o agente. */
@@ -74,12 +74,15 @@ export async function consultar(
     ]);
   }
 
-  // Modo demonstração: responde com a fixture local, sem tocar a rede.
+  // Modo demonstração: responde com a fixture local, sem tocar a rede. Há duas
+  // fixtures — a cível comum e a de recuperação judicial —, escolhidas pelo
+  // número que a própria consulta carrega.
   if (config.demo) {
+    const pedeRj = JSON.stringify(query).includes(NUMERO_RJ_DEMO);
     return {
       tribunal,
       total: 1,
-      registros: [processoDemo()],
+      registros: [pedeRj ? processoRecuperacaoDemo() : processoDemo()],
       cache: false,
     };
   }

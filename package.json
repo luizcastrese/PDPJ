@@ -1,6 +1,6 @@
 {
   "name": "pdpj-mcp-server",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "description": "MCP server para a API Pública do DataJud/PDPJ (CNJ): consulta e análise de processos judiciais",
@@ -24,6 +24,7 @@
     "start:http": "node dist/src/http.js",
     "diagnostico": "bash scripts/diagnostico.sh",
     "instalar:desktop": "node scripts/instalar-desktop.mjs",
+    "empacotar:extensao": "node scripts/empacotar-extensao.mjs",
     "inspector": "npx -y @modelcontextprotocol/inspector node dist/src/index.js",
     "test": "npm run build && node --test \"dist/test/*.test.js\""
   },

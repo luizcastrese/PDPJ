@@ -251,3 +251,162 @@ export const IdentificarEnvolvidosInput = {
   ignorar_digito: IgnorarDigito,
   response_format: FormatoResposta,
 };
+
+/* ------------------------- recuperação judicial -------------------------- */
+
+const MaxPublicacoesRj = z
+  .number()
+  .int()
+  .min(1)
+  .max(100)
+  .default(60)
+  .describe(
+    'Quantas publicações do DJEN varrer. Editais de credores costumam estar entre as mais antigas do processo; em recuperações longas, aumente.',
+  );
+
+export const DossieRecuperacaoInput = {
+  numero: NumeroProcesso.describe(
+    'Número CNJ do processo de recuperação judicial, com ou sem máscara.',
+  ),
+  tribunal: AliasTribunal.optional(),
+  max_publicacoes: MaxPublicacoesRj,
+  incluir_credores: z
+    .boolean()
+    .default(true)
+    .describe('Tenta ler a relação de credores do edital publicado.'),
+  incluir_ativos: z
+    .boolean()
+    .default(true)
+    .describe('Levanta as menções a bens gravados, constrições e ativos declarados livres.'),
+  max_credores_por_classe: z
+    .number()
+    .int()
+    .min(1)
+    .max(200)
+    .default(15)
+    .describe(
+      'Quantos credores mostrar por classe no dossiê. Para a lista completa, use pdpj_relacao_credores.',
+    ),
+  ignorar_digito: IgnorarDigito,
+  response_format: FormatoResposta,
+};
+
+export const RelacaoCredoresInput = {
+  numero: NumeroProcesso,
+  tribunal: AliasTribunal.optional(),
+  fonte: z
+    .enum(['auto', 'edital_52', 'edital_7', 'quadro_geral'])
+    .default('auto')
+    .describe(
+      "Qual edital usar: 'edital_52' (relação do devedor, art. 52, §1º), 'edital_7' (relação do administrador judicial, art. 7º, §2º), 'quadro_geral' (art. 18) ou 'auto' para o mais completo encontrado.",
+    ),
+  classe: z
+    .enum(['i_trabalhista', 'ii_garantia_real', 'iii_quirografario', 'iv_me_epp', 'extraconcursal'])
+    .optional()
+    .describe('Restringe a uma classe do art. 41 da Lei 11.101/2005.'),
+  contem: z
+    .string()
+    .optional()
+    .describe('Filtra credores cujo nome contenha este texto (sem diferenciar acentos ou caixa).'),
+  valor_minimo: z
+    .number()
+    .min(0)
+    .optional()
+    .describe('Mostra apenas créditos de valor igual ou superior a este (em reais).'),
+  ordenar_por: z
+    .enum(['valor', 'nome', 'ordem_do_edital'])
+    .default('valor')
+    .describe('Ordenação dos credores dentro de cada classe.'),
+  incluir_trecho: z
+    .boolean()
+    .default(false)
+    .describe('Anexa a cada credor o trecho do edital de onde ele foi lido.'),
+  max_publicacoes: MaxPublicacoesRj,
+  limit: Limit,
+  offset: Offset,
+  ignorar_digito: IgnorarDigito,
+  response_format: FormatoResposta,
+};
+
+export const AtivosGarantiasInput = {
+  numero: NumeroProcesso,
+  tribunal: AliasTribunal.optional(),
+  situacao: z
+    .enum(['todos', 'gravados', 'livres', 'fora_do_concurso'])
+    .default('todos')
+    .describe(
+      "Recorte: 'gravados' (com ônus ou constrição), 'livres' (declarados desembaraçados), 'fora_do_concurso' (art. 49, §3º: fiduciária, leasing, reserva de domínio) ou 'todos'.",
+    ),
+  incluir_constricoes: z
+    .boolean()
+    .default(true)
+    .describe('Inclui penhoras, bloqueios e indisponibilidades, que são constrição e não garantia.'),
+  max_publicacoes: MaxPublicacoesRj,
+  limit: Limit,
+  ignorar_digito: IgnorarDigito,
+  response_format: FormatoResposta,
+};
+
+export const HistoricoEmpresaInput = {
+  nome_empresa: z
+    .string()
+    .min(3)
+    .describe(
+      'Razão social ou nome de fantasia da empresa, como aparece nas publicações (ex.: "Metalúrgica Andrade Ltda").',
+    ),
+  tribunal: AliasTribunal.optional().describe(
+    'Sigla do tribunal para restringir a busca. Sem ela, a busca é nacional.',
+  ),
+  de: DataIso.optional().describe('Data inicial de disponibilização (AAAA-MM-DD).'),
+  ate: DataIso.optional().describe('Data final de disponibilização (AAAA-MM-DD).'),
+  max_publicacoes: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(100)
+    .describe('Quantas publicações varrer para montar o histórico.'),
+  response_format: FormatoResposta,
+};
+
+export const LocalizarProcessosInput = {
+  nome: z
+    .string()
+    .min(3)
+    .describe(
+      'Nome do grupo econômico, razão social ou nome de fantasia. Aceita a forma como o grupo é conhecido ("Grupo Andrade"): o prefixo e a forma jurídica são removidos para chegar ao núcleo distintivo.',
+    ),
+  tribunal: AliasTribunal.optional().describe(
+    'Sigla para restringir a busca. Sem ela, a busca é nacional.',
+  ),
+  somente_insolvencia: z
+    .boolean()
+    .default(true)
+    .describe(
+      'Mantém apenas processos de recuperação judicial, extrajudicial ou falência. Desligue para ver toda a carteira do grupo.',
+    ),
+  confirmar_no_datajud: z
+    .boolean()
+    .default(true)
+    .describe(
+      'Confirma os candidatos mais prováveis no DataJud, trazendo a classe oficial, o órgão julgador e a data de ajuizamento. Custa uma consulta por candidato e a API do CNJ é lenta.',
+    ),
+  max_confirmacoes: z
+    .number()
+    .int()
+    .min(1)
+    .max(5)
+    .default(3)
+    .describe('Quantos candidatos confirmar no DataJud (as consultas são feitas em paralelo).'),
+  de: DataIso.optional().describe('Data inicial de disponibilização (AAAA-MM-DD).'),
+  ate: DataIso.optional().describe('Data final de disponibilização (AAAA-MM-DD).'),
+  max_publicacoes_por_variante: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(100)
+    .describe('Quantas publicações varrer por variante do nome.'),
+  limit: Limit,
+  response_format: FormatoResposta,
+};

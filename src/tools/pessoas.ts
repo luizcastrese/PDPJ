@@ -19,7 +19,7 @@ import { comTratamento, responder, SOMENTE_LEITURA } from './comum.js';
  * Resolve o número informado e devolve os dígitos e a sigla do tribunal
  * deduzida, aplicando a mesma validação usada nas ferramentas do DataJud.
  */
-function prepararNumero(
+export function prepararNumero(
   numero: string,
   aliasTribunal: string | undefined,
   ignorarDigito: boolean,

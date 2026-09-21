@@ -63,4 +63,34 @@
     <question>Entre todos os movimentos do processo 1000123-69.2023.8.26.0100, qual deles é apontado como o marco de sentença ou julgamento? Responda com o nome exato do movimento.</question>
     <answer>Julgado procedente em parte o pedido - Sentença</answer>
   </qa_pair>
+
+  <qa_pair>
+    <question>No processo de recuperação judicial 1005544-74.2022.8.26.0100, em que fase da Lei 11.101/2005 o processo se encontra, segundo o marco mais avançado registrado nos movimentos?</question>
+    <answer>Recuperação concedida (art. 58)</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Considerando o edital de credores publicado no processo 1005544-74.2022.8.26.0100, quantos credores ao todo constam da relação, somadas as quatro classes do art. 41?</question>
+    <answer>10</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Na recuperação judicial 1005544-74.2022.8.26.0100, qual é a soma dos créditos da Classe II, dos credores com garantia real?</question>
+    <answer>R$ 6.070.500,00</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>O processo 1005544-74.2022.8.26.0100 teve o processamento deferido e registra um movimento de prorrogação da suspensão. Diante disso, quantos dias corridos de período de suspensão o servidor computa no total?</question>
+    <answer>360</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Entre os gravames mencionados nas publicações da recuperação 1005544-74.2022.8.26.0100, qual bem aparece descrito como onerado por hipoteca?</question>
+    <answer>O galpão industrial da matriz</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Na recuperação 1005544-74.2022.8.26.0100 há menção a alienação fiduciária, cessão fiduciária de recebíveis e arrendamento mercantil. Qual dispositivo da Lei 11.101/2005 é o que retira esses créditos dos efeitos da recuperação?</question>
+    <answer>art. 49, §3º</answer>
+  </qa_pair>
 </evaluation>

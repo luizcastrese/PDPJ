@@ -25,6 +25,12 @@ você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
 > "Quem são os advogados desse processo?"
 > "Quem foi nomeado administrador judicial?"
 > "Quais processos têm intimação para a OAB/SP 214556?"
+> "Monta o dossiê da recuperação judicial 1005544-74.2022.8.26.0100"
+> "Por que essa empresa pediu recuperação judicial?"
+> "Lista os credores por classe e soma cada uma"
+> "Quanto a recuperanda deve para bancos com garantia real?"
+> "Quais bens estão gravados e o que sobra de ativo livre?"
+> "Acha a recuperação judicial da Metalúrgica Andrade"
 
 ---
 
@@ -40,9 +46,18 @@ você  →  Claude (a interface)  →  pdpj-mcp-server ─┤
 | `pdpj_consulta_avancada` | Query Elasticsearch livre, para o que os filtros não cobrem |
 | `pdpj_identificar_envolvidos` | Advogados (nome e OAB), partes e auxiliares da justiça: administrador judicial, perito, curador, inventariante, leiloeiro |
 | `pdpj_buscar_publicacoes` | Publicações do DJEN por processo, OAB, nome de advogado ou de parte |
+| `pdpj_dossie_recuperacao` | Dossiê de uma recuperação judicial: fase, marcos da LRF, stay period, fatores legais, credores e ativos |
+| `pdpj_relacao_credores` | Relação de credores lida do edital, separada pelas classes do art. 41 |
+| `pdpj_ativos_garantias` | Bens gravados, constrições e ativos declarados livres |
+| `pdpj_localizar_processos` | Acha o número CNJ pelo nome do grupo econômico, reunindo as coligadas |
+| `pdpj_historico_empresa` | Histórico judicial da empresa pelo nome — situa a crise no tempo |
 | `pdpj_validar_numero` | Valida o dígito verificador e identifica o tribunal — offline |
 | `pdpj_listar_tribunais` | Os 91 tribunais cobertos e seus aliases — offline |
 | `pdpj_status` | Como o servidor está configurado (sem expor a chave) |
+
+`pdpj_dossie_recuperacao`, `pdpj_relacao_credores`, `pdpj_ativos_garantias`,
+`pdpj_localizar_processos` e `pdpj_historico_empresa` formam o módulo de
+recuperação judicial, detalhado adiante.
 
 Todas são somente leitura (`readOnlyHint`) e aceitam `response_format`:
 `markdown` (padrão, legível) ou `json` (dados completos).
@@ -85,6 +100,111 @@ ora não): ela acumula palavras até esbarrar em pontuação, em palavra funcion
 ou no texto voltando a correr — o que evita colar "prestará contas" no fim de
 uma razão social.
 
+Um documento de escopo — fontes, ferramentas, maturidade por área, o que fica
+de fora e em que condições o servidor opera — está em [ESCOPO.md](ESCOPO.md).
+
+---
+
+## Recuperação judicial
+
+Um segundo módulo lê o que a **Lei 11.101/2005** obriga a publicar. A lógica é
+essa: a relação de credores e o resumo do pedido do devedor não são campo de
+base alguma, mas o art. 52, §1º, e o art. 7º, §2º mandam publicá-los em edital
+— e edital vai ao diário. É de lá que eles saem.
+
+### O que o módulo entrega
+
+| Pergunta | De onde vem a resposta |
+| --- | --- |
+| Em que fase está | Marcos reconhecidos no nome do movimento **e no texto da decisão publicada**: deferimento (art. 52), plano (art. 53), assembleia (arts. 35 a 46), concessão (art. 58), encerramento (art. 63), falência (art. 73) |
+| Quanto falta do *stay period* | 180 dias corridos do deferimento, 360 com a prorrogação registrada (art. 6º, §4º) |
+| Por que pediu RJ | Trechos do resumo do pedido no edital, classificados por causa |
+| Quem são os credores | Pares nome → valor dentro de cada classe do art. 41, lidos do edital |
+| O que está gravado | Menções a ônus e constrição no texto, classificadas pelo efeito que têm |
+| Qual é o número, sabendo só o nome | Núcleo distintivo do nome → busca no DJEN → reagrupamento por processo → confirmação no DataJud |
+
+### Achar o processo sabendo só o nome do grupo
+
+Nenhuma das duas bases indexa CNPJ. O DataJud não tem partes; o DJEN tem o nome
+como o tribunal o escreveu, que raramente é o nome pelo qual o grupo é
+conhecido. "Grupo Andrade" não existe nos autos — lá está "Metalúrgica Andrade
+Indústria e Comércio Ltda", e a coligada aparece como "Andrade Participações
+S.A.".
+
+`pdpj_localizar_processos` reduz o nome ao núcleo distintivo, busca as poucas
+variantes que valem a pena, e **reagrupa por processo** — que é onde o grupo
+aparece. Várias razões sociais do mesmo núcleo num só processo é a assinatura
+da consolidação processual (arts. 69-G a 69-J); o mesmo núcleo espalhado por
+processos diferentes pode ser grupo com pedidos separados, ou homônimo. A
+ferramenta não decide: mostra a evidência, ordena por ela, e confirma os
+melhores candidatos no DataJud.
+
+### Duas superfícies para o mesmo marco
+
+A Tabela Processual Unificada é usada com granularidades muito diferentes. Há
+tribunais que registram "Deferimento do processamento da recuperação judicial";
+há tribunais — o TJSP entre eles — cujo histórico inteiro é "Petição",
+"Documento", "Conclusão" e um genérico "Recuperação judicial". Num processo real
+de 2017, os 4.456 movimentos não continham um único marco da LRF pelo nome.
+
+Por isso o reconhecimento roda sobre duas superfícies: o **nome do movimento**,
+que é nominalizado, e o **texto da decisão publicada**, que fala na primeira
+pessoa — "Defiro o processamento", "Concedo", "Nomeio", "Decreto a falência".
+Cobrir só a primeira forma deixava o módulo cego justamente onde ele precisava
+enxergar.
+
+O movimento vence sempre que existe: é campo, e a data é a do ato. O que vem do
+texto entra marcado com `○`, com o trecho de origem à vista, e a data é a da
+disponibilização no diário — alguns dias depois do ato.
+
+Uma salvaguarda merece registro: o padrão de deferimento exige fronteira de
+palavra antes de "defiro", porque sem ela **"indefiro o processamento" casaria
+como deferimento** e inverteria a decisão. Há teste para isso.
+
+### A distinção que o módulo insiste em manter
+
+| Situação | Submete-se ao plano? | Onde entra |
+| --- | --- | --- |
+| Alienação e cessão fiduciária, leasing, reserva de domínio | **Não** (art. 49, §3º) | Fora do concurso — mas o bem de capital essencial não pode ser retirado durante a suspensão |
+| Hipoteca, penhor, anticrese, caução | Sim | Classe II; suprimir a garantia exige o aval do credor titular (art. 50, §1º) |
+| Penhora, bloqueio, indisponibilidade | — | Constrição, não garantia; sobre bem essencial, a substituição é do juízo da recuperação (art. 6º, §7º-B) |
+
+É a diferença que mais altera o valor efetivo do ativo, e é por isso que o
+resultado nunca vem em lista única.
+
+### Acionar sem terminal
+
+Duas formas, as duas dentro do próprio Claude:
+
+**Prompts MCP** — o servidor registra três, que aparecem como comandos de barra
+no cliente (`/pdpj:dossie_recuperacao_judicial`) ou como itens do menu do
+conector:
+
+| Prompt | Para quê |
+| --- | --- |
+| `dossie_recuperacao_judicial` | O dossiê completo, com o roteiro de qual ferramenta chamar e como relatar |
+| `relacao_de_credores` | Só o passivo, por classe |
+| `ativos_livres_e_gravados` | Só o ativo, separado em livres e gravados |
+
+**Skill do projeto** — `.claude/skills/dossie-rj/` traz a habilidade `dossie-rj`,
+carregada automaticamente ao abrir este diretório no Claude Code. Ela define a
+estrutura do relatório, a ordem das seções e as regras que não se negociam
+(extração não é campo; ausência de gravame não faz bem livre; lacuna não se
+preenche com memória). O anexo `referencia-lrf.md` reúne os artigos citados.
+
+### Onde a fonte pública termina
+
+Relação de bens (art. 51, III e IV), plano (art. 53), laudo
+econômico-financeiro, balanços, atas de assembleia e relatórios mensais do
+administrador judicial são **peças dos autos**. O diário publica a existência do
+ato, não o seu conteúdo. Por isso o levantamento de ativos deste servidor não é
+um inventário patrimonial — é o conjunto de menções encontradas em texto
+público, cada uma com o trecho de origem. E a ausência de gravame na lista nunca
+torna um bem livre.
+
+História societária — fundação, sócios, capital, filiais — não está em base
+judicial nenhuma: vem da Junta Comercial e do CNPJ na Receita Federal.
+
 ---
 
 ## Instalação
@@ -121,9 +241,65 @@ claude mcp add pdpj -- node "$(pwd)/dist/src/index.js"
 ```
 
 O repositório também traz um `.mcp.json`: ao abrir este diretório no Claude Code,
-o servidor é oferecido automaticamente (basta aprovar).
+o servidor é oferecido automaticamente (basta aprovar). Ele aponta para
+`scripts/mcp-stdio.mjs`, um lançador que instala as dependências e compila
+antes de subir o servidor — `dist/` é gerado e fica fora do git, então numa
+cópia recém-clonada não existiria nada para executar. Toda a saída de npm e de
+tsc vai para o stderr: o stdout fica reservado ao protocolo MCP.
 
-### Registrar no app Claude para computador
+### Claude Code na web
+
+Funciona sem nenhum passo extra de instalação — o ambiente clona o repositório
+e o lançador cuida do resto. Falta só uma coisa, que é configuração do ambiente
+e não do servidor: **liberar os hosts do CNJ no egress de rede**.
+
+```
+api-publica.datajud.cnj.jus.br    DataJud — metadados e movimentos
+comunicaapi.pje.jus.br            DJEN — publicações, editais, advogados
+```
+
+Sem isso, toda consulta volta com `HTTP 403 — Host not in allowlist`, que é
+recusa do proxy do ambiente, não da API. A configuração está nas
+[network egress settings do ambiente](https://code.claude.com/docs/en/claude-code-on-the-web).
+
+Para conhecer as ferramentas enquanto o acesso não sai, `PDPJ_DEMO=1` responde
+com fixtures locais — inclusive uma recuperação judicial completa.
+
+### Instalar no app Claude para computador
+
+O caminho mais curto é a extensão: `npm run empacotar:extensao` gera
+`out/pdpj.mcpb`, e no app basta **Configurações → Extensões → Configurações
+avançadas → Instalar extensão…** e escolher o arquivo. Um clique, sem
+hospedagem, sem URL pública e sem token — e como o app embute um Node.js, quem
+instala nem precisa ter Node na máquina.
+
+O pacote leva o servidor compilado e as dependências de produção dentro de si,
+então funciona numa máquina que não tem o repositório. É o formato para entregar
+o servidor a outra pessoa.
+
+#### Distribuir para outras pessoas
+
+Mandar o `.mcpb` por mensagem costuma falhar: são 5 MB e uma extensão que os
+filtros de e-mail e de mensageiro não reconhecem. Em vez disso, publique um
+release — o repositório é público, então o link serve para qualquer pessoa:
+
+1. Em **Releases → Draft a new release**, crie a tag (`v1.2.0`) e publique.
+2. O fluxo [`.github/workflows/extensao.yml`](.github/workflows/extensao.yml)
+   roda a suíte, empacota e anexa o arquivo ao release.
+3. O link estável é
+   `https://github.com/luizcastrese/PDPJ/releases/latest/download/pdpj.mcpb`,
+   e ele sempre aponta para a versão mais recente.
+
+Quem recebe o link baixa e instala pelo app. Não precisa de conta no GitHub, de
+Node.js, nem do repositório.
+
+Para conferir o pacote sem publicar nada, dispare o fluxo manualmente na aba
+**Actions**: ele guarda o `.mcpb` como artefato do próprio job.
+
+Se precisar mesmo mandar o arquivo por mensagem, compacte-o num `.zip` — quem
+receber descompacta e instala o `.mcpb` de dentro.
+
+Alternativa, para quem já tem o repositório clonado e prefere apontar para ele:
 
 ```bash
 npm run instalar:desktop
@@ -155,7 +331,7 @@ opcionais.
 | `PDPJ_BASE_URL` | `https://api-publica.datajud.cnj.jus.br` | Endereço base da API do DataJud |
 | `PDPJ_DJEN_URL` | `https://comunicaapi.pje.jus.br` | Endereço base da API do DJEN (aberta, sem chave) |
 | `PDPJ_CACHE_TTL` | `300` | Cache das consultas em segundos (`0` desativa) |
-| `PDPJ_TIMEOUT` | `30000` | Tempo limite por chamada, em milissegundos |
+| `PDPJ_TIMEOUT` | `90000` | Tempo limite por chamada, em milissegundos. A API do DataJud é lenta: buscas amplas passam de 50s |
 | `PDPJ_DEMO` | desligado | `1` responde com uma fixture local, sem rede |
 | `PDPJ_AUTH_TOKEN` | — | Só no modo HTTP: exige o token em `/mcp`, por cabeçalho `Authorization: Bearer` ou no caminho `/mcp/<token>` |
 | `PORT` | `8080` | Só no modo HTTP: porta de escuta |
@@ -205,6 +381,11 @@ pelo DJEN, e com as ressalvas da seção anterior. Além disso:
 - O DJEN cobre as comunicações a partir da adesão de cada tribunal. Processo
   antigo, em papel ou em segredo de justiça pode não ter publicação eletrônica —
   ausência de advogado no resultado não significa ausência de advogado nos autos.
+- Na recuperação judicial, credores, motivo do pedido e bens são **extraídos do
+  texto** dos editais, cujo layout varia por tribunal, por sistema e por
+  administrador judicial. A leitura devolve sempre o trecho de origem, e conta à
+  parte os valores que não puderam ser ligados a um nome. Peças dos autos —
+  relação de bens, plano, laudos, atas — nunca são publicadas em diário.
 
 ---
 
@@ -218,11 +399,15 @@ npm start          # servidor local (stdio)
 npm run start:http # servidor remoto (Streamable HTTP)
 npm run inspector  # MCP Inspector sobre o servidor compilado
 npm run diagnostico # verifica servidor, token e túnel do modo conector
+npm run empacotar:extensao # gera out/pdpj.mcpb, a extensão do app Claude
 ```
 
 Estrutura:
 
 ```
+scripts/
+  mcp-stdio.mjs     lançador do modo local: instala, compila e sobe o servidor
+  empacotar-extensao.mjs  gera o .mcpb, a extensão de um clique do app Claude
 src/
   index.ts          entrada local: McpServer + transporte stdio
   http.ts           entrada remota: Streamable HTTP stateless, com Bearer token
@@ -237,10 +422,13 @@ src/
     tribunais.ts    catálogo dos 91 índices e dedução pelo número
     datajud.ts      cliente HTTP, cache e erros acionáveis
     analise.ts      motor de análise: categorias, métricas, marcos, alertas
+    recuperacao.ts  Lei 11.101/2005: marcos, stay period, credores, gravames
+    localizador.ts  do nome do grupo ao número CNJ: núcleo, variantes, agrupamento
     resolver.ts     fluxo comum: valida → descobre tribunal → consulta → analisa
     formato.ts      renderização markdown
-    demo.ts         fixture do modo demonstração
+    demo.ts         fixtures do modo demonstração (cível comum e recuperação)
   tools/            registro das ferramentas MCP
+  prompts/          prompts MCP: roteiros acionáveis como comando de barra
 test/               testes unitários e de integração ponta a ponta
 ```
 
