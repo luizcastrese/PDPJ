@@ -118,6 +118,11 @@ railway variables --set "PDPJ_AUTH_TOKEN=<seu-token>"
 railway domain          # gera a URL pública https
 ```
 
+#### Azure Container Apps
+
+Caminho detalhado, com a região do Brasil e a sonda de saúde, em
+[azure.md](azure.md). É o indicado para quem já opera em ambiente Microsoft.
+
 #### Render
 
 Crie um Web Service apontando para o repositório, ambiente Docker, e adicione
@@ -238,9 +243,13 @@ descarta ao fim. Não há sessão a preservar, então a plataforma pode reciclar
 multiplicar instâncias à vontade. O cache é por instância e apenas acelera
 repetições — nada depende dele.
 
-**Rede de saída.** A máquina que hospeda precisa alcançar
-`api-publica.datajud.cnj.jus.br` e `comunicaapi.pje.jus.br`. Em plataformas
-públicas isso é o padrão; em rede corporativa, confirme antes.
+**Rede de saída, e a região importa.** A máquina que hospeda precisa alcançar
+`api-publica.datajud.cnj.jus.br` e `comunicaapi.pje.jus.br`. O segundo **recusa
+conexões originadas fora do Brasil**: hospedado no exterior, o servidor responde
+consultas de processo e andamento, mas credores, motivo do pedido e ativos
+voltam vazios. Escolha uma região brasileira — Azure Brazil South, Google Cloud
+Run `southamerica-east1` ou Fly `gru`. Em rede corporativa, confirme a saída
+antes.
 
 **Custo.** O serviço fica ocioso quase todo o tempo. Plataformas com free tier
 ou com escala a zero (Cloud Run, Fly) tendem a sair de graça ou perto disso.

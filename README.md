@@ -229,7 +229,10 @@ Depois de um `git pull`, não é preciso lembrar de recompilar: `npm start` e
 | Precisa de URL pública | não | sim — por túnel (1 comando) ou hospedagem |
 
 Para o modo remoto — usar o `pdpj` no Claude de qualquer aparelho, como
-qualquer outro conector — siga [docs/conector-remoto.md](docs/conector-remoto.md).
+qualquer outro conector — siga [docs/conector-remoto.md](docs/conector-remoto.md);
+em ambiente Microsoft, [docs/azure.md](docs/azure.md) traz o caminho pelo Azure
+Container Apps, na região Brazil South. A região não é detalhe: o DJEN recusa
+conexões de fora do Brasil.
 O resto desta seção cobre o modo local.
 
 ### Registrar no Claude Code
