@@ -57,6 +57,16 @@ export interface MarcoRj {
   data: string;
   movimento: string;
   ocorrencias: number;
+  /**
+   * De onde o marco foi reconhecido. O nome do movimento é evidência mais
+   * forte: vem de campo, e a data é a do ato. O texto da publicação é
+   * evidência mais fraca e a data é a da disponibilização no diário, alguns
+   * dias depois do ato — mas é a única fonte quando o tribunal registra
+   * movimentos genéricos.
+   */
+  origem: 'movimento' | 'publicacao';
+  /** Trecho de onde o marco saiu, quando veio de publicação. */
+  contexto?: string;
 }
 
 interface PadraoMarco {
@@ -67,53 +77,62 @@ interface PadraoMarco {
 }
 
 /**
- * Reconhecimento dos marcos pelo **nome** do movimento na Tabela Processual
- * Unificada. A ordem importa: o primeiro padrão que casa vence, e os desfechos
- * (falência, encerramento, concessão) vêm antes dos atos de trâmite para que
- * "concessão da recuperação judicial" não seja lido como um mero "processamento".
+ * Reconhecimento dos marcos, usado contra duas superfícies bem diferentes: o
+ * **nome do movimento** na Tabela Processual Unificada, que é nominalizado
+ * ("Deferimento do processamento"), e o **texto da decisão publicada**, que é
+ * escrito na primeira pessoa ("Defiro o processamento", "Concedo", "Nomeio").
+ * Por isso cada padrão cobre as duas formas — cobrir só a primeira foi o erro
+ * que deixou o reconhecimento cego no texto.
+ *
+ * A ordem importa: o primeiro padrão que casa vence, e os desfechos (falência,
+ * encerramento, concessão) vêm antes dos atos de trâmite para que "concessão
+ * da recuperação judicial" não seja lido como um mero "processamento".
+ *
+ * O `\b` antes de "defiro" não é decoração: sem ele, "indefiro o
+ * processamento" casaria como deferimento e inverteria a decisão.
  */
 export const PADROES_MARCO: PadraoMarco[] = [
   {
     id: 'falencia',
     rotulo: 'Convolação em falência',
     base: 'art. 73 da Lei 11.101/2005',
-    padrao: /convola|falencia decretada|decretacao de falencia|decretada a falencia/,
+    padrao: /convola|decret\w*.{0,20}falencia|falencia.{0,20}decretada/,
   },
   {
     id: 'encerramento',
     rotulo: 'Encerramento da recuperação judicial',
     base: 'art. 63 da Lei 11.101/2005',
-    padrao: /encerramento da recuperacao|encerrada a recuperacao|encerramento do processo de recuperacao/,
+    padrao: /encerr\w*.{0,25}recuperacao|encerramento do processo de recuperacao/,
   },
   {
     id: 'concessao',
     rotulo: 'Concessão da recuperação judicial',
     base: 'art. 58 da Lei 11.101/2005',
-    padrao: /conces(sao|de|dida).{0,30}recuperacao|recuperacao judicial concedida/,
+    padrao: /\bconce[sd]\w*.{0,30}recuperacao|recuperacao judicial concedida/,
   },
   {
     id: 'homologacao_plano',
     rotulo: 'Homologação do plano',
     base: 'art. 58 da Lei 11.101/2005',
-    padrao: /homologa.{0,25}plano/,
+    padrao: /homolog\w*.{0,25}plano/,
   },
   {
     id: 'rejeicao_plano',
     rotulo: 'Rejeição do plano em assembleia',
     base: 'art. 56, §4º, da Lei 11.101/2005',
-    padrao: /rejeic.{0,25}plano|plano.{0,20}rejeitado/,
+    padrao: /rejei\w*.{0,25}plano|plano.{0,20}rejeitad/,
   },
   {
     id: 'aprovacao_plano',
     rotulo: 'Aprovação do plano em assembleia',
     base: 'art. 45 da Lei 11.101/2005',
-    padrao: /aprovac.{0,25}plano|plano.{0,20}aprovado/,
+    padrao: /aprov\w*.{0,25}plano|plano.{0,20}aprovad/,
   },
   {
     id: 'apresentacao_plano',
     rotulo: 'Apresentação do plano de recuperação',
     base: 'art. 53 da Lei 11.101/2005',
-    padrao: /apresentacao do plano|juntada.{0,30}plano de recuperacao|plano de recuperacao.{0,20}apresentado/,
+    padrao: /apresentacao do plano|juntada.{0,30}plano de recuperacao|plano de recuperacao.{0,20}apresentad/,
   },
   {
     id: 'assembleia',
@@ -125,7 +144,7 @@ export const PADROES_MARCO: PadraoMarco[] = [
     id: 'prorrogacao_stay',
     rotulo: 'Prorrogação do período de suspensão (stay period)',
     base: 'art. 6º, §4º, da Lei 11.101/2005',
-    padrao: /prorroga.{0,40}(suspensao|stay|blindagem)|prorrogacao do prazo de suspensao/,
+    padrao: /prorrog\w*.{0,40}(suspensao|stay|blindagem)|prorrogacao do prazo de suspensao/,
   },
   {
     id: 'suspensao_acoes',
@@ -137,13 +156,13 @@ export const PADROES_MARCO: PadraoMarco[] = [
     id: 'deferimento',
     rotulo: 'Deferimento do processamento da recuperação',
     base: 'art. 52 da Lei 11.101/2005',
-    padrao: /deferimento do processamento|defer.{0,25}processamento|processamento da recuperacao judicial deferido/,
+    padrao: /deferimento do processamento|\bdef[ei]r\w*\s+(?:[oa]\s+|d[eo]\s+)?processamento|processamento.{0,20}deferid/,
   },
   {
     id: 'indeferimento',
     rotulo: 'Indeferimento do pedido',
     base: 'art. 51 c/c art. 52 da Lei 11.101/2005',
-    padrao: /indeferimento da (peticao )?inicial|indefer.{0,30}recuperacao/,
+    padrao: /indefer\w*\s+d[ao]\s+(?:peticao\s+)?inicial|\bindef[ei]r\w*.{0,30}recuperacao/,
   },
   {
     id: 'constatacao_previa',
@@ -155,7 +174,7 @@ export const PADROES_MARCO: PadraoMarco[] = [
     id: 'nomeacao_aj',
     rotulo: 'Nomeação do administrador judicial',
     base: 'art. 21 da Lei 11.101/2005',
-    padrao: /nomea.{0,30}administrador judicial|administrador judicial nomeado/,
+    padrao: /nome[ai]\w*.{0,30}administrador judicial|administrador judicial nomead/,
   },
   {
     id: 'edital_credores',
@@ -223,9 +242,80 @@ export function extrairMarcos(movimentos: Movimento[]): MarcoRj[] {
       data: mov.data,
       movimento: mov.nome,
       ocorrencias: 1,
+      origem: 'movimento',
     });
   }
 
+  return [...mapa.values()].sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/**
+ * Reconhece os mesmos marcos no **texto** das publicações.
+ *
+ * Existe porque a Tabela Processual Unificada é usada com granularidades muito
+ * diferentes: há tribunais que registram "Deferimento do processamento da
+ * recuperação judicial", e há tribunais — o TJSP entre eles — cujo histórico
+ * inteiro é "Petição", "Documento", "Conclusão" e um genérico "Recuperação
+ * judicial". Nesses, o marco só existe escrito, no corpo do que foi publicado.
+ *
+ * A contrapartida é honesta e fica registrada em cada item: a data é a da
+ * disponibilização no diário, não a do ato, e prosa admite falso positivo que
+ * um nome de movimento não admite. Por isso todo marco assim carrega o trecho
+ * de origem e vem marcado como vindo de publicação.
+ */
+export function extrairMarcosDeTexto(publicacoes: Publicacao[]): MarcoRj[] {
+  const mapa = new Map<string, MarcoRj>();
+
+  for (const pub of publicacoes) {
+    if (!pub.texto || !pub.dataDisponibilizacao) continue;
+    const alvo = chave(pub.texto);
+
+    for (const padrao of PADROES_MARCO) {
+      padrao.padrao.lastIndex = 0;
+      const m = padrao.padrao.exec(alvo);
+      if (!m) continue;
+
+      const data = new Date(pub.dataDisponibilizacao).toISOString();
+      const atual = mapa.get(padrao.id);
+      if (atual) {
+        atual.ocorrencias += 1;
+        if (data > atual.data) {
+          atual.data = data;
+          atual.contexto = contextoDe(pub.texto, m.index);
+        }
+        continue;
+      }
+
+      mapa.set(padrao.id, {
+        id: padrao.id,
+        rotulo: padrao.rotulo,
+        base: padrao.base,
+        data,
+        movimento: `Reconhecido no texto da publicação de ${pub.dataDisponibilizacao}`,
+        ocorrencias: 1,
+        origem: 'publicacao',
+        contexto: contextoDe(pub.texto, m.index),
+      });
+    }
+  }
+
+  return [...mapa.values()].sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/**
+ * Reúne os marcos das duas fontes. O movimento ganha sempre que existe: é
+ * campo, e a data é a do ato. A publicação entra para os marcos que o
+ * histórico de movimentos não nomeou — que, nos tribunais de registro
+ * genérico, são quase todos.
+ */
+export function combinarMarcos(
+  dosMovimentos: MarcoRj[],
+  dasPublicacoes: MarcoRj[],
+): MarcoRj[] {
+  const mapa = new Map(dosMovimentos.map((m) => [m.id, m]));
+  for (const m of dasPublicacoes) {
+    if (!mapa.has(m.id)) mapa.set(m.id, m);
+  }
   return [...mapa.values()].sort((a, b) => a.data.localeCompare(b.data));
 }
 

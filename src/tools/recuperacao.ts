@@ -16,11 +16,13 @@ import { data } from '../services/formato.js';
 import { ErroPdpj } from '../services/datajud.js';
 import {
   calcularStay,
+  combinarMarcos,
   deduzirFase,
   escolherEdital,
   extrairAtivos,
   extrairCredores,
   extrairMarcos,
+  extrairMarcosDeTexto,
   extrairMotivos,
   fatoresLegais,
   moeda,
@@ -314,7 +316,14 @@ Limite estrutural: relação de bens, plano de recuperação, laudos e balanços
       );
 
       const principal = resolvido?.instancias[0] ?? null;
-      const marcos: MarcoRj[] = extrairMarcos(movimentos);
+
+      // Duas fontes para o mesmo marco. Onde o tribunal registra movimentos
+      // genéricos — "Petição", "Documento", "Recuperação judicial" —, o marco
+      // só existe escrito no corpo do que foi publicado.
+      const marcos: MarcoRj[] = combinarMarcos(
+        extrairMarcos(movimentos),
+        extrairMarcosDeTexto(djen.publicacoes),
+      );
       const fase = deduzirFase(marcos);
       const stay = calcularStay(marcos);
       const motivos = extrairMotivos(djen.publicacoes);
@@ -467,10 +476,28 @@ Limite estrutural: relação de bens, plano de recuperação, laudos e balanços
       if (marcos.length) {
         l.push('', '| Data | Marco | Fundamento |', '| --- | --- | --- |');
         for (const m of marcos) {
-          l.push(`| ${data(m.data)} | ${m.rotulo}${m.ocorrencias > 1 ? ` (${m.ocorrencias}×)` : ''} | ${m.base} |`);
+          const fonte = m.origem === 'publicacao' ? ' ○' : '';
+          l.push(
+            `| ${data(m.data)}${fonte} | ${m.rotulo}${m.ocorrencias > 1 ? ` (${m.ocorrencias}×)` : ''} | ${m.base} |`,
+          );
+        }
+        if (marcos.some((m) => m.origem === 'publicacao')) {
+          l.push(
+            '',
+            '○ Marco reconhecido no **texto da publicação**, não no nome do movimento — a data é a da disponibilização no diário, alguns dias depois do ato. Ocorre nos tribunais que registram movimentos genéricos. Confira nos trechos abaixo.',
+            '',
+          );
+          for (const m of marcos.filter((x) => x.origem === 'publicacao' && x.contexto)) {
+            l.push(`- **${m.rotulo}** — _"…${m.contexto}…"_`);
+          }
         }
       } else {
-        l.push('', '_Nenhum marco da Lei 11.101/2005 reconhecido nos movimentos._');
+        l.push(
+          '',
+          djen.falha
+            ? '_Nenhum marco reconhecido nos movimentos, e o texto das publicações não pôde ser consultado._'
+            : '_Nenhum marco da Lei 11.101/2005 reconhecido, nem no nome dos movimentos nem no texto das publicações._',
+        );
       }
 
       l.push('', '## Fatores legais mais relevantes', '');

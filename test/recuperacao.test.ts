@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   calcularStay,
+  combinarMarcos,
   deduzirFase,
   escolherEdital,
   extrairAtivos,
   extrairCredores,
   extrairMarcos,
+  extrairMarcosDeTexto,
   extrairMotivos,
   fatoresLegais,
   lerValor,
@@ -517,4 +519,92 @@ test('parte que não carrega o núcleo buscado é sinalizada como possível hom�
   );
   assert.equal(candidatos[0].nomes.length, 0);
   assert.ok(candidatos[0].sinais.some((s) => /homônimo/.test(s)));
+});
+
+/* ------------------- marcos a partir do texto publicado ------------------- */
+
+test('reconhece marcos no texto da publicação quando o movimento é genérico', () => {
+  // O histórico real do TJSP para uma recuperação é feito de "Petição",
+  // "Documento", "Conclusão" e um genérico "Recuperação judicial": nenhum
+  // marco da LRF aparece no nome do movimento.
+  const genericos = prepararMovimentos([
+    { codigo: 85, nome: 'Petição', dataHora: diasAtras(400) },
+    { codigo: 581, nome: 'Documento', dataHora: diasAtras(380) },
+    { codigo: 12041, nome: 'Recuperação judicial', dataHora: diasAtras(360) },
+  ]);
+  assert.equal(extrairMarcos(genericos).length, 0, 'nada a reconhecer nos nomes');
+
+  const doTexto = extrairMarcosDeTexto([
+    publicacao(
+      'Vistos. Defiro o processamento da recuperação judicial de Metalúrgica Andrade Ltda, ' +
+        'nos termos do art. 52 da Lei 11.101/2005, e nomeio administrador judicial Ribeiro Consultoria.',
+      { dataDisponibilizacao: '2024-02-10' },
+    ),
+  ]);
+
+  const ids = doTexto.map((m) => m.id);
+  assert.ok(ids.includes('deferimento'));
+  assert.ok(ids.includes('nomeacao_aj'));
+
+  const deferimento = doTexto.find((m) => m.id === 'deferimento');
+  assert.equal(deferimento?.origem, 'publicacao');
+  assert.ok(deferimento?.contexto && deferimento.contexto.length > 20, 'traz o trecho de origem');
+});
+
+test('o movimento prevalece sobre a publicação para o mesmo marco', () => {
+  const dosMovimentos = extrairMarcos(
+    prepararMovimentos([
+      { codigo: 1, nome: 'Deferimento do processamento da recuperação judicial', dataHora: diasAtras(300) },
+    ]),
+  );
+  const dasPublicacoes = extrairMarcosDeTexto([
+    publicacao('Defiro o processamento da recuperação judicial. Concedo a recuperação judicial.', {
+      dataDisponibilizacao: '2024-02-10',
+    }),
+  ]);
+
+  const juntos = combinarMarcos(dosMovimentos, dasPublicacoes);
+  const deferimento = juntos.find((m) => m.id === 'deferimento');
+  const concessao = juntos.find((m) => m.id === 'concessao');
+
+  assert.equal(deferimento?.origem, 'movimento', 'campo vence texto');
+  assert.equal(concessao?.origem, 'publicacao', 'o que só existe no texto entra assim mesmo');
+});
+
+test('a fase passa a ser deduzida também do que só está publicado', () => {
+  const juntos = combinarMarcos(
+    [],
+    extrairMarcosDeTexto([
+      publicacao('Concedo a recuperação judicial, homologado o plano aprovado em assembleia.', {
+        dataDisponibilizacao: '2024-06-01',
+      }),
+    ]),
+  );
+  assert.equal(deduzirFase(juntos).id, 'concedida');
+});
+
+test('"indefiro" nunca é lido como deferimento', () => {
+  // Inversão de decisão é o pior erro possível aqui: "indefiro o processamento"
+  // contém "defiro o processamento" como subcadeia.
+  const m = extrairMarcosDeTexto([
+    publicacao('Vistos. Indefiro o processamento da recuperação judicial requerida.', {
+      dataDisponibilizacao: '2024-03-01',
+    }),
+  ]);
+  const ids = m.map((x) => x.id);
+  assert.ok(!ids.includes('deferimento'), 'não pode virar deferimento');
+  assert.ok(ids.includes('indeferimento'));
+  assert.equal(deduzirFase(combinarMarcos([], m)).id, 'indeferida');
+});
+
+test('reconhece os verbos na primeira pessoa que a decisão publicada usa', () => {
+  const caso = (texto: string) =>
+    extrairMarcosDeTexto([publicacao(texto, { dataDisponibilizacao: '2024-03-01' })]).map((m) => m.id);
+
+  assert.ok(caso('Concedo a recuperação judicial da devedora.').includes('concessao'));
+  assert.ok(caso('Homologo o plano de recuperação judicial aprovado.').includes('homologacao_plano'));
+  assert.ok(caso('Nomeio administrador judicial a empresa Ribeiro Consultoria.').includes('nomeacao_aj'));
+  assert.ok(caso('Decreto a falência da recuperanda, nos termos do art. 73.').includes('falencia'));
+  assert.ok(caso('Declaro encerrada a recuperação judicial.').includes('encerramento'));
+  assert.ok(caso('Prorrogo o prazo de suspensão por igual período.').includes('prorrogacao_stay'));
 });

@@ -113,7 +113,7 @@ base alguma, mas o art. 52, §1º, e o art. 7º, §2º mandam publicá-los em ed
 
 | Pergunta | De onde vem a resposta |
 | --- | --- |
-| Em que fase está | Marcos reconhecidos nos movimentos: deferimento (art. 52), plano (art. 53), assembleia (arts. 35 a 46), concessão (art. 58), encerramento (art. 63), falência (art. 73) |
+| Em que fase está | Marcos reconhecidos no nome do movimento **e no texto da decisão publicada**: deferimento (art. 52), plano (art. 53), assembleia (arts. 35 a 46), concessão (art. 58), encerramento (art. 63), falência (art. 73) |
 | Quanto falta do *stay period* | 180 dias corridos do deferimento, 360 com a prorrogação registrada (art. 6º, §4º) |
 | Por que pediu RJ | Trechos do resumo do pedido no edital, classificados por causa |
 | Quem são os credores | Pares nome → valor dentro de cada classe do art. 41, lidos do edital |
@@ -135,6 +135,28 @@ da consolidação processual (arts. 69-G a 69-J); o mesmo núcleo espalhado por
 processos diferentes pode ser grupo com pedidos separados, ou homônimo. A
 ferramenta não decide: mostra a evidência, ordena por ela, e confirma os
 melhores candidatos no DataJud.
+
+### Duas superfícies para o mesmo marco
+
+A Tabela Processual Unificada é usada com granularidades muito diferentes. Há
+tribunais que registram "Deferimento do processamento da recuperação judicial";
+há tribunais — o TJSP entre eles — cujo histórico inteiro é "Petição",
+"Documento", "Conclusão" e um genérico "Recuperação judicial". Num processo real
+de 2017, os 4.456 movimentos não continham um único marco da LRF pelo nome.
+
+Por isso o reconhecimento roda sobre duas superfícies: o **nome do movimento**,
+que é nominalizado, e o **texto da decisão publicada**, que fala na primeira
+pessoa — "Defiro o processamento", "Concedo", "Nomeio", "Decreto a falência".
+Cobrir só a primeira forma deixava o módulo cego justamente onde ele precisava
+enxergar.
+
+O movimento vence sempre que existe: é campo, e a data é a do ato. O que vem do
+texto entra marcado com `○`, com o trecho de origem à vista, e a data é a da
+disponibilização no diário — alguns dias depois do ato.
+
+Uma salvaguarda merece registro: o padrão de deferimento exige fronteira de
+palavra antes de "defiro", porque sem ela **"indefiro o processamento" casaria
+como deferimento** e inverteria a decisão. Há teste para isso.
 
 ### A distinção que o módulo insiste em manter
 
