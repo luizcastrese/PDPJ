@@ -1,0 +1,58 @@
+# Publica a extensão do app Claude (.mcpb) como anexo de release.
+#
+# Compartilhar o arquivo por mensagem é ruim: 5 MB, extensão que os filtros de
+# e-mail e mensageiro não conhecem, e uma cópia que envelhece em silêncio na
+# mão de quem recebeu. Um release resolve os três: link público estável, versão
+# à vista, e o arquivo montado pela automação a partir do código — não de uma
+# máquina qualquer.
+#
+# Como usar, sem terminal: em Releases → "Draft a new release", crie a tag
+# (v1.2.0), publique, e este fluxo anexa o pdpj.mcpb ao release em alguns
+# minutos. O link fica em
+# https://github.com/luizcastrese/PDPJ/releases/latest/download/pdpj.mcpb
+# e sempre aponta para a versão mais recente.
+
+name: Extensão do app Claude
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  empacotar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar a suíte
+        run: npm test
+
+      - name: Empacotar a extensão
+        run: npm run empacotar:extensao
+
+      # Só anexa quando veio de um release; o disparo manual serve para
+      # conferir o pacote sem publicar nada.
+      - name: Anexar ao release
+        if: github.event_name == 'release'
+        run: gh release upload "$GITHUB_REF_NAME" out/pdpj.mcpb --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Guardar para download manual
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdpj-extensao
+          path: out/pdpj.mcpb

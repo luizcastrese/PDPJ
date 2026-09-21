@@ -252,6 +252,28 @@ O pacote leva o servidor compilado e as dependências de produção dentro de si
 então funciona numa máquina que não tem o repositório. É o formato para entregar
 o servidor a outra pessoa.
 
+#### Distribuir para outras pessoas
+
+Mandar o `.mcpb` por mensagem costuma falhar: são 5 MB e uma extensão que os
+filtros de e-mail e de mensageiro não reconhecem. Em vez disso, publique um
+release — o repositório é público, então o link serve para qualquer pessoa:
+
+1. Em **Releases → Draft a new release**, crie a tag (`v1.2.0`) e publique.
+2. O fluxo [`.github/workflows/extensao.yml`](.github/workflows/extensao.yml)
+   roda a suíte, empacota e anexa o arquivo ao release.
+3. O link estável é
+   `https://github.com/luizcastrese/PDPJ/releases/latest/download/pdpj.mcpb`,
+   e ele sempre aponta para a versão mais recente.
+
+Quem recebe o link baixa e instala pelo app. Não precisa de conta no GitHub, de
+Node.js, nem do repositório.
+
+Para conferir o pacote sem publicar nada, dispare o fluxo manualmente na aba
+**Actions**: ele guarda o `.mcpb` como artefato do próprio job.
+
+Se precisar mesmo mandar o arquivo por mensagem, compacte-o num `.zip` — quem
+receber descompacta e instala o `.mcpb` de dentro.
+
 Alternativa, para quem já tem o repositório clonado e prefere apontar para ele:
 
 ```bash
